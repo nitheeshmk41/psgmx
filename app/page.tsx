@@ -1,103 +1,143 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import Navbar from "./components/Navbar";
+import StatsCard from "./components/StatsCard";
+import GroupStats from "./components/GroupStats";
+import LeaderboardGrid from "./components/LeaderboardGrid";
+import Charts from "./components/Charts";
+
+interface User {
+  id: number;
+  username: string;
+  roll_num: string;
+  class: "G1" | "G2";
+  totalsolved: number;
+  weekly_solved: number;
+  leetcode_id?: string;
+}
+
+export default function LeaderboardDashboard() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshingIds, setRefreshingIds] = useState<number[]>([]);
+  const [filterClass, setFilterClass] = useState<"G1" | "G2" | "ALL">("ALL");
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("users").select("*");
+    if (error) console.error(error);
+    setUsers(data || []);
+    setLoading(false);
+  };
+
+  const refreshUser = async (user: User) => {
+    if (!user.leetcode_id) return;
+    setRefreshingIds((prev) => [...prev, user.id]);
+    await fetch(`/api/refreshUser/${user.leetcode_id}`);
+    await fetchUsers();
+    setRefreshingIds((prev) => prev.filter((id) => id !== user.id));
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const filteredUsers =
+    filterClass === "ALL"
+      ? users
+      : users.filter((u) => u.class === filterClass);
+
+  // Overall Stats
+  const totalStudents = users.length;
+  const totalSolved = users.reduce((acc, u) => acc + (u.totalsolved || 0), 0);
+  const weeklyProgress = users.reduce(
+    (acc, u) => acc + (u.weekly_solved || 0),
+    0
+  );
+  const weeklyLeader =
+    users.sort((a, b) => (b.weekly_solved || 0) - (a.weekly_solved || 0))[0]
+      ?.username || "-";
+
+  // Groups
+  const groupG1 = users.filter((u) => u.class === "G1");
+  const groupG2 = users.filter((u) => u.class === "G2");
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen bg-gray-900 text-white">
+      <Navbar filterClass={filterClass} setFilterClass={setFilterClass} />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <div className="p-6 space-y-6">
+        {/* Overall Stats */}
+        <h1 className="text-2xl font-bold mb-4">Overall Statistics</h1>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatsCard title="Total Students" value={totalStudents} />
+          <StatsCard title="Problems Solved" value={totalSolved} />
+          <StatsCard title="Weekly Progress" value={weeklyProgress} />
+          <StatsCard title="Weekly Leader" value={weeklyLeader} />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+
+        {/* Group Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <GroupStats
+            groupName="Group G1"
+            members={groupG1.length}
+            totalSolved={groupG1.reduce(
+              (sum, u) => sum + (u.totalsolved || 0),
+              0
+            )}
+            weeklyProgress={groupG1.reduce(
+              (sum, u) => sum + (u.weekly_solved || 0),
+              0
+            )}
+            weeklyTop={
+              groupG1.sort(
+                (a, b) => (b.weekly_solved || 0) - (a.weekly_solved || 0)
+              )[0]?.username || "-"
+            }
+            overallTop={
+              groupG1.sort(
+                (a, b) => (b.totalsolved || 0) - (a.totalsolved || 0)
+              )[0]?.username || "-"
+            }
+            color="bg-blue-900/40"
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          <GroupStats
+            groupName="Group G2"
+            members={groupG2.length}
+            totalSolved={groupG2.reduce(
+              (sum, u) => sum + (u.totalsolved || 0),
+              0
+            )}
+            weeklyProgress={groupG2.reduce(
+              (sum, u) => sum + (u.weekly_solved || 0),
+              0
+            )}
+            weeklyTop={
+              groupG2.sort(
+                (a, b) => (b.weekly_solved || 0) - (a.weekly_solved || 0)
+              )[0]?.username || "-"
+            }
+            overallTop={
+              groupG2.sort(
+                (a, b) => (b.totalsolved || 0) - (a.totalsolved || 0)
+              )[0]?.username || "-"
+            }
+            color="bg-purple-900/40"
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </div>
+
+        {/* Charts */}
+        <Charts users={users} />
+
+        {/* Leaderboard */}
+        <LeaderboardGrid
+          users={filteredUsers}
+          refreshingIds={refreshingIds}
+          refreshUser={refreshUser}
+        />
+      </div>
     </div>
   );
 }
