@@ -47,7 +47,7 @@ export default function Navbar() {
   };
 
   const navItems = [
-    { label: "Leaderboard", path: "/" },
+    { label: "Leaderboard", path: "/", icon: Trophy },
     { label: "Admin", path: "/admin" },
   ];
 
@@ -56,32 +56,32 @@ export default function Navbar() {
       initial={{ y: -50, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="sticky top-0 z-50 bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700 py-3 px-4 sm:px-6"
+      className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border py-3 px-4 sm:px-6 lg:px-8 shadow-sm"
     >
-      <div className="container mx-auto flex items-center justify-between">
+      <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Left - Brand */}
         <motion.div
           className="flex items-center space-x-3 cursor-pointer"
           onClick={() => router.push("/")}
-          whileHover={{ scale: 1.05 }}
+          whileHover={{ scale: 1.02 }}
           transition={{ type: "spring", stiffness: 300 }}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-foreground text-background">
             <Trophy className="h-5 w-5" />
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100 hover:text-blue-500 dark:hover:text-blue-400 transition-colors duration-200">
+          <h1 className="text-xl font-bold tracking-tight text-foreground hover:text-primary transition-colors duration-200">
             PSGMX LeetBoard
           </h1>
         </motion.div>
 
         {/* Right - Desktop Navigation */}
-        <div className="hidden lg:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-6">
           {navItems.map((item) => (
             <Button
               key={item.label}
               variant="ghost"
               onClick={() => router.push(item.path)}
-              className="text-gray-700 dark:text-gray-200 hover:text-blue-500 dark:hover:text-blue-400 font-medium text-base transition-colors duration-200 px-4 py-2 rounded-lg"
+              className="text-muted-foreground hover:text-foreground font-medium transition-colors duration-200"
             >
               {item.label}
             </Button>
@@ -89,7 +89,8 @@ export default function Navbar() {
           {isAdmin && (
             <Button
               onClick={handleLogout}
-              className="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white px-4 py-2 rounded-lg text-base font-medium transition-colors duration-200"
+              variant="destructive"
+              className="font-medium transition-colors duration-200"
             >
               Logout
             </Button>
@@ -100,35 +101,23 @@ export default function Navbar() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full"
+                className="text-muted-foreground hover:bg-accent rounded-full"
               >
                 <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                 <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                 <span className="sr-only">Toggle theme</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg min-w-[160px] p-2"
-            >
-              <DropdownMenuItem
-                onClick={() => setTheme("light")}
-                className="flex items-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md cursor-pointer text-sm px-3 py-2"
-              >
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer">
                 <Sun className="mr-2 h-4 w-4" />
                 Light
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme("dark")}
-                className="flex items-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md cursor-pointer text-sm px-3 py-2"
-              >
+              <DropdownMenuItem onClick={() => setTheme("dark")} className="cursor-pointer">
                 <Moon className="mr-2 h-4 w-4" />
                 Dark
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setTheme("system")}
-                className="flex items-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md cursor-pointer text-sm px-3 py-2"
-              >
+              <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer">
                 <Monitor className="mr-2 h-4 w-4" />
                 System
               </DropdownMenuItem>
@@ -137,12 +126,12 @@ export default function Navbar() {
         </div>
 
         {/* Mobile Menu Button */}
-        <div className="lg:hidden">
+        <div className="md:hidden">
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleMobileMenu}
-            className="text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full"
+            className="text-muted-foreground hover:bg-accent rounded-full"
           >
             {isMobileMenuOpen ? (
               <X className="h-6 w-6" />
@@ -162,9 +151,9 @@ export default function Navbar() {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="lg:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 overflow-hidden"
+            className="md:hidden overflow-hidden border-t border-border mt-3"
           >
-            <div className="container mx-auto px-4 py-4 flex flex-col gap-3">
+            <div className="px-4 py-4 flex flex-col gap-2">
               {navItems.map((item) => (
                 <Button
                   key={item.label}
@@ -173,7 +162,7 @@ export default function Navbar() {
                     router.push(item.path);
                     setIsMobileMenuOpen(false);
                   }}
-                  className="text-gray-700 dark:text-gray-200 hover:text-blue-500 dark:hover:text-blue-400 font-medium text-base transition-colors duration-200 w-full text-left py-2 rounded-lg"
+                  className="justify-start text-muted-foreground hover:text-foreground font-medium transition-colors duration-200"
                 >
                   {item.label}
                 </Button>
@@ -184,37 +173,38 @@ export default function Navbar() {
                     handleLogout();
                     setIsMobileMenuOpen(false);
                   }}
-                  className="bg-red-500 hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 text-white w-full py-2 rounded-lg text-base font-medium transition-colors duration-200"
+                  variant="destructive"
+                  className="justify-start font-medium transition-colors duration-200"
                 >
                   Logout
                 </Button>
               )}
               {/* Theme Switcher for Mobile */}
-              <div className="flex flex-col gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Theme</span>
-                <div className="flex gap-2">
+              <div className="flex flex-col gap-2 pt-4 border-t border-border">
+                <span className="text-sm text-muted-foreground font-medium">Theme</span>
+                <div className="grid grid-cols-3 gap-2">
                   <Button
-                    variant={theme === "light" ? "default" : "outline"}
+                    variant="outline"
                     onClick={() => setTheme("light")}
-                    className={`flex-1 ${theme === "light" ? "bg-blue-500 text-white" : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"} hover:bg-blue-600 dark:hover:bg-blue-700 rounded-lg`}
+                    className={`flex items-center justify-center ${theme === "light" ? "border-primary" : ""}`}
                   >
-                    <Sun className="mr-2 h-4 w-4" />
+                    <Sun className="h-4 w-4 mr-2" />
                     Light
                   </Button>
                   <Button
-                    variant={theme === "dark" ? "default" : "outline"}
+                    variant="outline"
                     onClick={() => setTheme("dark")}
-                    className={`flex-1 ${theme === "dark" ? "bg-blue-500 text-white" : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"} hover:bg-blue-600 dark:hover:bg-blue-700 rounded-lg`}
+                    className={`flex items-center justify-center ${theme === "dark" ? "border-primary" : ""}`}
                   >
-                    <Moon className="mr-2 h-4 w-4" />
+                    <Moon className="h-4 w-4 mr-2" />
                     Dark
                   </Button>
                   <Button
-                    variant={theme === "system" ? "default" : "outline"}
+                    variant="outline"
                     onClick={() => setTheme("system")}
-                    className={`flex-1 ${theme === "system" ? "bg-blue-500 text-white" : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"} hover:bg-blue-600 dark:hover:bg-blue-700 rounded-lg`}
+                    className={`flex items-center justify-center ${theme === "system" ? "border-primary" : ""}`}
                   >
-                    <Monitor className="mr-2 h-4 w-4" />
+                    <Monitor className="h-4 w-4 mr-2" />
                     System
                   </Button>
                 </div>
