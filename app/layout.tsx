@@ -31,7 +31,7 @@ export default function RootLayout({
           <div className="flex flex-col min-h-screen">
             <main className="flex-grow">{children}</main>
             <footer className="bg-gray-100 dark:bg-gray-800 py-4 text-center text-sm text-gray-600 dark:text-gray-400">
-              © {new Date().getFullYear()} CodeTracker. All rights reserved.
+              © {new Date().getFullYear()} For Mx-ianns By G2 Mx-ians. All rights reserved.
             </footer>
           </div>
           <Toaster

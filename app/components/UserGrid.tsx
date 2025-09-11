@@ -1,3 +1,4 @@
+import React from "react";
 import { RefreshCw, Trophy, Award, Code2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -13,6 +14,9 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
+
+// Import your modal component
+import UserDetailModal from "./UserDetailModal";
 
 interface User {
   id: number;
@@ -56,96 +60,98 @@ function UserCard({ user, isRefreshing, onRefresh }: {
   };
 
   return (
-    <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 border-muted">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3">
-            <Avatar className="h-12 w-12 ring-2 ring-background transition-transform group-hover:scale-110">
-              <AvatarImage 
-                src={user.profileimg || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
-                alt={user.username}
-              />
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                {getInitials(user.username)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="space-y-1">
-              <div className="flex items-center space-x-2">
-                <h3 className="font-semibold text-sm leading-none">{user.username}</h3>
-                {user.isWeeklyTop && (
-                  <Badge variant="outline" className="px-1.5 py-0.5 text-xs bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20">
-                    🥇 Weekly
+    <UserDetailModal user={user}>
+      <Card className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 border-muted cursor-pointer">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center space-x-3">
+              <Avatar className="h-12 w-12 ring-2 ring-background transition-transform group-hover:scale-110">
+                <AvatarImage 
+                  src={user.profileimg || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`}
+                  alt={user.username}
+                />
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  {getInitials(user.username)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <h3 className="font-semibold text-sm leading-none">{user.username}</h3>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Badge 
+                    variant={getBadgeVariant(user.class)}
+                    className="text-xs"
+                  >
+                    {user.class}
                   </Badge>
-                )}
-                {user.isOverallTop && (
-                  <Badge variant="outline" className="px-1.5 py-0.5 text-xs bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20">
-                    👑 Overall
-                  </Badge>
-                )}
+                  <span className="text-xs text-muted-foreground">{user.roll_num}</span>
+                </div>
               </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent modal from opening
+                onRefresh(user);
+              }}
+              disabled={isRefreshing || !user.leetcode_id}
+            >
+              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+            </Button>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="pt-0">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
               <div className="flex items-center space-x-2">
-                <Badge 
-                  variant={getBadgeVariant(user.class)}
-                  className="text-xs"
-                >
-                  {user.class}
-                </Badge>
-                <span className="text-xs text-muted-foreground">{user.roll_num}</span>
+                <Trophy className="h-4 w-4 text-yellow-500" />
+                <div>
+                  <p className="text-sm font-medium">{user.totalsolved || 0}</p>
+                  <p className="text-xs text-muted-foreground">Total Solved</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Code2 className="h-4 w-4 text-green-500" />
+                <div>
+                  <p className="text-sm font-medium">{user.weekly_solved || 0}</p>
+                  <p className="text-xs text-muted-foreground">This Week</p>
+                </div>
               </div>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            onClick={() => onRefresh(user)}
-            disabled={isRefreshing || !user.leetcode_id}
-          >
-            <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-          </Button>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="pt-0">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Trophy className="h-4 w-4 text-yellow-500" />
-              <div>
-                <p className="text-sm font-medium">{user.totalsolved || 0}</p>
-                <p className="text-xs text-muted-foreground">Total Solved</p>
-              </div>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Code2 className="h-4 w-4 text-green-500" />
-              <div>
-                <p className="text-sm font-medium">{user.weekly_solved || 0}</p>
-                <p className="text-xs text-muted-foreground">This Week</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {(user.weeklyRank && user.weeklyRank <= 3) && (
+          {(user.weeklyRank && user.weeklyRank <= 3) && (
+            <div className="mt-3 pt-3 border-t border-muted">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Weekly Rank:</span>
+                <div className="flex items-center space-x-1">
+                  {user.weeklyRank === 1 && <span>🥇</span>}
+                  {user.weeklyRank === 2 && <span>🥈</span>}
+                  {user.weeklyRank === 3 && <span>🥉</span>}
+                  <span className="font-medium">#{user.weeklyRank}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Click to view details indicator */}
           <div className="mt-3 pt-3 border-t border-muted">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Weekly Rank:</span>
-              <div className="flex items-center space-x-1">
-                {user.weeklyRank === 1 && <span>🥇</span>}
-                {user.weeklyRank === 2 && <span>🥈</span>}
-                {user.weeklyRank === 3 && <span>🥉</span>}
-                <span className="font-medium">#{user.weeklyRank}</span>
-              </div>
-            </div>
+            <p className="text-xs text-muted-foreground text-center group-hover:text-primary transition-colors">
+              Click to view details
+            </p>
           </div>
-        )}
-      </CardContent>
+        </CardContent>
 
-      {/* Hover overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-    </Card>
+        {/* Hover overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+      </Card>
+    </UserDetailModal>
   );
 }
 
