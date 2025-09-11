@@ -12,7 +12,7 @@ export default function LeaderboardGrid({
   refreshUser,
 }: LeaderboardGridProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-4 md:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
       {users.map((user) => (
         <LeaderboardCard
           key={user.id}
