@@ -12,6 +12,7 @@ import { usePagination } from "./hooks/usePagination";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
+import POTDBanner from "./components/POTDBanner";
 
 interface User {
   id: number;
@@ -23,6 +24,18 @@ interface User {
   leetcode_id?: string;
   profileimg?: string;
   last_active?: string;
+  ranking?: number;
+}
+
+interface POTD {
+  date: string;
+  link: string;
+  question: {
+    title: string;
+    titleSlug: string;
+    difficulty: string;
+    acRate: number;
+  };
 }
 
 const USERS_PER_PAGE = 10;
@@ -33,7 +46,9 @@ export default function LeaderboardDashboard() {
   const [refreshingIds, setRefreshingIds] = useState<number[]>([]);
   const [filterClass, setFilterClass] = useState<"G1" | "G2" | "ALL">("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  const [potd, setPotd] = useState<POTD | null>(null);
 
+  // Fetch Users
   const fetchUsers = async () => {
     setLoading(true);
     const { data, error } = await supabase.from("users").select("*");
@@ -42,6 +57,7 @@ export default function LeaderboardDashboard() {
     setLoading(false);
   };
 
+  // Refresh Single User
   const refreshUser = async (user: User) => {
     if (!user.leetcode_id) return;
     setRefreshingIds((prev) => [...prev, user.id]);
@@ -56,8 +72,20 @@ export default function LeaderboardDashboard() {
     }
   };
 
+  // Fetch POTD
+  const fetchPOTD = async () => {
+    try {
+      const res = await fetch("/api/potd");
+      const data = await res.json();
+      setPotd(data);
+    } catch {
+      toast.error("Failed to fetch Problem of the Day");
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchPOTD();
   }, []);
 
   // Filter and search
@@ -77,7 +105,7 @@ export default function LeaderboardDashboard() {
         .findIndex((u) => u.id === user.id) + 1;
     const overallRank =
       [...filteredUsers]
-        .sort((a, b) => (b.totalsolved || 0) - (a.totalsolved || 0))
+        .sort((a, b) => (a.ranking || Infinity) - (b.ranking || Infinity))
         .findIndex((u) => u.id === user.id) + 1;
     return { ...user, weeklyRank, overallRank };
   });
@@ -94,10 +122,15 @@ export default function LeaderboardDashboard() {
     canGoPrev,
   } = usePagination(usersWithRanks, USERS_PER_PAGE);
 
-  const getTopUser = (arr: User[], key: keyof User) =>
+  const getTopUser = (arr: User[], key: "weekly_solved" | "totalsolved" | "ranking") =>
     arr.length
-      ? [...arr].sort((a, b) => (b[key] || 0) - (a[key] || 0))[0]?.username ||
-        "-"
+      ? [...arr].sort((a, b) => {
+          if (key === "ranking") {
+            return (a[key] || Infinity) - (b[key] || Infinity);
+          } else {
+            return (b[key] || 0) - (a[key] || 0);
+          }
+        })[0]?.username || "-"
       : "-";
 
   // Dashboard stats
@@ -107,7 +140,7 @@ export default function LeaderboardDashboard() {
     0
   );
   const weeklyLeader = getTopUser(users, "weekly_solved");
-  const overallLeader = getTopUser(users, "totalsolved");
+  const overallLeader = getTopUser(users, "ranking");
 
   // Groups
   const groupG1 = users.filter((u) => u.class === "G1");
@@ -120,15 +153,15 @@ export default function LeaderboardDashboard() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="min-h-screen bg-gray-50 dark:bg-gray-900"
+        className="min-h-screen bg-background"
       >
         <Navbar />
-        <div className="container mx-auto p-4 sm:p-6 space-y-6">
+        <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
               <Skeleton
                 key={i}
-                className="h-24 w-full rounded-xl bg-gray-200 dark:bg-gray-700"
+                className="h-24 w-full rounded-xl bg-muted"
               />
             ))}
           </div>
@@ -136,7 +169,7 @@ export default function LeaderboardDashboard() {
             {[...Array(2)].map((_, i) => (
               <Skeleton
                 key={i}
-                className="h-40 w-full rounded-xl bg-gray-200 dark:bg-gray-700"
+                className="h-40 w-full rounded-xl bg-muted"
               />
             ))}
           </div>
@@ -144,7 +177,7 @@ export default function LeaderboardDashboard() {
             {[...Array(8)].map((_, i) => (
               <Skeleton
                 key={i}
-                className="h-48 w-full rounded-xl bg-gray-200 dark:bg-gray-700"
+                className="h-48 w-full rounded-xl bg-muted"
               />
             ))}
           </div>
@@ -158,18 +191,20 @@ export default function LeaderboardDashboard() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gray-50 dark:bg-gray-900"
+      className="min-h-screen bg-background"
     >
       <Navbar />
-      <div className="container mx-auto p-4 sm:p-6 space-y-8">
+      <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+        {/* POTD Banner */}
+        {potd && <POTDBanner potd={potd} />}
+
         {/* Stats Cards */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
         >
-          <h1>POTD</h1>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-6">
             Dashboard Overview
           </h1>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -195,7 +230,7 @@ export default function LeaderboardDashboard() {
               0
             )}
             weeklyTop={getTopUser(groupG1, "weekly_solved")}
-            overallTop={getTopUser(groupG1, "totalsolved")}
+            overallTop={getTopUser(groupG1, "ranking")}
             color="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800"
           />
           <GroupStats
@@ -206,7 +241,7 @@ export default function LeaderboardDashboard() {
               0
             )}
             weeklyTop={getTopUser(groupG2, "weekly_solved")}
-            overallTop={getTopUser(groupG2, "totalsolved")}
+            overallTop={getTopUser(groupG2, "ranking")}
             color="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900 dark:to-purple-800"
           />
         </motion.div>
@@ -220,20 +255,7 @@ export default function LeaderboardDashboard() {
           <Charts users={users} />
         </motion.div>
 
-        {/* Search & Filter */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          <SearchAndFilter
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            filterClass={filterClass}
-            onFilterChange={setFilterClass}
-            totalResults={filteredUsers.length}
-          />
-        </motion.div>
+        
 
         {/* User Grid */}
         <motion.div

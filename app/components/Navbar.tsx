@@ -66,11 +66,9 @@ export default function Navbar() {
           whileHover={{ scale: 1.02 }}
           transition={{ type: "spring", stiffness: 300 }}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary-foreground text-background">
-            <Trophy className="h-5 w-5" />
-          </div>
+         
           <h1 className="text-xl font-bold tracking-tight text-foreground hover:text-primary transition-colors duration-200">
-            PSGMX LeetBoard
+            MX LeetBoard
           </h1>
         </motion.div>
 

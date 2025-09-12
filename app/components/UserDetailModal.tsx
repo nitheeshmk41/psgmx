@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState } from "react";
 import {
   Dialog,
@@ -13,70 +12,73 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  RefreshCw, 
-  Calendar, 
-  User, 
-  Trophy, 
-  Target, 
-  Code, 
+import {
+  RefreshCw,
+  Calendar,
+  User,
+  Trophy,
+  Target,
+  Code,
   Activity,
   TrendingUp,
   Award,
-  BookOpen
+  BookOpen,
+  ExternalLink,
 } from "lucide-react";
 import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
   BarChart,
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
-// Mock refresh function for demonstration
-const refreshUser = async (userData: any) => {
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  return {
-    ...userData,
-    totalsolved: userData.totalsolved + Math.floor(Math.random() * 5),
-    weekly_solved: Math.floor(Math.random() * 20),
-    last_active: new Date().toISOString()
-  };
-};
+interface User {
+  id: number;
+  username: string;
+  roll_num: string;
+  class: "G1" | "G2";
+  totalsolved: number;
+  weekly_solved: number;
+  leetcode_id?: string;
+  profileimg?: string;
+  last_active?: string;
+  ranking?: number;
+  weeklyRank?: number;
+  overallRank?: number;
+  easy_solved?: number;
+  medium_solved?: number;
+  hard_solved?: number;
+  recent_languages?: string[];
+}
 
-// Sample user data for demonstration
-const sampleUser = {
-  username: "CodeMaster2024",
-  profileimg: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&h=150&fit=crop&crop=face",
-  class: "Computer Science",
-  roll_num: "CS21B1234",
-  totalsolved: 287,
-  easy_solved: 145,
-  medium_solved: 98,
-  hard_solved: 44,
-  recent_languages: ["Python", "JavaScript", "Java", "C++"],
-  weekly_solved: 12,
-  last_active: "2025-09-10T14:30:00Z"
-};
+interface UserDetailModalProps {
+  user: User;
+  children?: React.ReactNode;
+}
 
 const StatCard = ({ icon: Icon, label, value, className = "" }: any) => (
-  <Card className={`hover:shadow-lg transition-all duration-300 hover:scale-[1.02] ${className}`}>
-    <CardContent className="p-4">
-      <div className="flex items-center space-x-3">
-        <div className="p-2 rounded-lg bg-primary/10">
-          <Icon className="h-5 w-5 text-primary" />
+  <Card
+    className={cn(
+      "hover:shadow-lg transition-all duration-300 hover:scale-[1.02] border border-border/20 bg-gradient-to-br from-background to-background/90 rounded-xl",
+      className
+    )}
+  >
+    <CardContent className="p-3 sm:p-4">
+      <div className="flex items-center space-x-2 sm:space-x-3">
+        <div className="p-2 rounded-md bg-primary/10">
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
         </div>
         <div>
-          <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <p className="text-2xl font-bold">{value}</p>
+          <p className="text-xs sm:text-sm font-medium text-muted-foreground">{label}</p>
+          <p className="text-lg sm:text-xl font-bold">{value}</p>
         </div>
       </div>
     </CardContent>
@@ -84,36 +86,43 @@ const StatCard = ({ icon: Icon, label, value, className = "" }: any) => (
 );
 
 const LoadingSkeleton = () => (
-  <div className="space-y-6 p-6">
-    <div className="flex flex-col sm:flex-row items-center gap-6">
-      <Skeleton className="w-24 h-24 rounded-full" />
-      <div className="space-y-3 flex-1">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-4 w-40" />
+  <div className="space-y-4 p-4 sm:p-6">
+    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+      <Skeleton className="w-16 h-16 sm:w-20 sm:h-20 rounded-full" />
+      <div className="space-y-2 flex-1">
+        <Skeleton className="h-6 w-32 sm:w-40" />
+        <Skeleton className="h-4 w-24 sm:w-28" />
+        <Skeleton className="h-4 w-28 sm:w-32" />
       </div>
     </div>
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Skeleton className="h-20 w-full" />
-      <Skeleton className="h-20 w-full" />
-      <Skeleton className="h-20 w-full" />
-      <Skeleton className="h-20 w-full" />
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
     </div>
-    <Skeleton className="h-80 w-full" />
+    <Skeleton className="h-40 w-full" />
   </div>
 );
 
-export default function UserDetailModal({ user = sampleUser, children }: any) {
+export default function UserDetailModal({ user, children }: UserDetailModalProps) {
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(user);
+  const [data, setData] = useState<User>(user);
 
   const handleRefresh = async () => {
+    if (!data.leetcode_id) {
+      toast.error("No LeetCode ID available");
+      return;
+    }
     setLoading(true);
     try {
-      const updated = await refreshUser(data);
-      setData(updated);
-    } catch (err) {
-      console.error(err);
+      const response = await fetch(`/api/user/${data.leetcode_id}`);
+      if (!response.ok) throw new Error("Failed to refresh user data");
+      const updatedUser = await response.json();
+      setData(updatedUser);
+      toast.success(`${data.username}'s data refreshed successfully`);
+    } catch {
+      toast.error(`Failed to refresh ${data.username}'s data`);
     } finally {
       setLoading(false);
     }
@@ -121,8 +130,8 @@ export default function UserDetailModal({ user = sampleUser, children }: any) {
 
   const DIFFICULTY_COLORS = {
     Easy: "#22c55e",
-    Medium: "#f59e0b", 
-    Hard: "#ef4444"
+    Medium: "#f59e0b",
+    Hard: "#ef4444",
   };
 
   const solved = {
@@ -134,16 +143,10 @@ export default function UserDetailModal({ user = sampleUser, children }: any) {
   const lastActiveFormatted = data.last_active
     ? new Date(data.last_active).toLocaleDateString("en-GB", {
         day: "2-digit",
-        month: "short", 
-        year: "numeric"
+        month: "short",
+        year: "numeric",
       })
     : "Never";
-
-  const pieData = [
-    { name: "Easy", value: solved.easy, color: DIFFICULTY_COLORS.Easy },
-    { name: "Medium", value: solved.medium, color: DIFFICULTY_COLORS.Medium },
-    { name: "Hard", value: solved.hard, color: DIFFICULTY_COLORS.Hard },
-  ].filter(item => item.value > 0); // Filter out zero values for better visualization
 
   const barData = [
     { difficulty: "Easy", solved: solved.easy, color: DIFFICULTY_COLORS.Easy },
@@ -155,28 +158,47 @@ export default function UserDetailModal({ user = sampleUser, children }: any) {
     <Dialog>
       <DialogTrigger asChild>
         {children || (
-          <Button variant="outline" className="gap-2">
+          <Button
+            variant="outline"
+            className="gap-2 hover:bg-primary/10 transition-all duration-200 rounded-lg text-sm sm:text-base"
+          >
             <User className="h-4 w-4" />
             View Profile
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-md sm:max-w-3xl lg:max-w-5xl max-h-[90vh] overflow-y-auto p-0 rounded-xl shadow-2xl">
+      <DialogContent
+        className="
+          w-[95vw] max-w-[1000px] sm:max-w-[1200px] lg:max-w-[1400px] /* Ultra wide */
+          h-auto max-h-[85vh] /* Compact height */
+          mx-auto
+          p-0 rounded-2xl shadow-2xl border border-border/20
+          bg-background/95 backdrop-blur-md
+          flex flex-col
+          overflow-hidden
+          fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
+          animate-in fade-in-50 zoom-in-95
+        "
+      >
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
-          className="bg-gradient-to-br from-background via-background to-muted/20"
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="bg-background/95"
         >
-          <DialogHeader className="px-6 py-6 bg-gradient-to-r from-primary/5 to-primary/10 border-b border-border/50 sticky top-0 z-10 backdrop-blur-sm">
+          <DialogHeader className="px-4 py-3 sm:px-6 sm:py-4 bg-gradient-to-r from-primary/5 to-primary/10 border-b border-border/20">
             <DialogTitle className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-primary/10 ring-1 ring-primary/20">
-                  <User className="h-6 w-6 text-primary" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-2 rounded-md bg-primary/10">
+                  <User className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight">User Profile</h2>
-                  <p className="text-sm text-muted-foreground">Detailed coding journey overview</p>
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight">
+                    User Profile
+                  </h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Explore coding achievements
+                  </p>
                 </div>
               </div>
               <Button
@@ -184,66 +206,94 @@ export default function UserDetailModal({ user = sampleUser, children }: any) {
                 size="sm"
                 variant="outline"
                 disabled={loading}
-                className="gap-2 hover:bg-primary/5 transition-all duration-200"
+                className="gap-2 hover:bg-primary/10 transition-all duration-200 rounded-lg text-xs sm:text-sm"
               >
-                <RefreshCw className={`${loading ? "animate-spin" : ""} h-4 w-4`} />
-                Refresh Data
+                <RefreshCw
+                  className={cn("h-4 w-4", loading && "animate-spin")}
+                />
+                Refresh
               </Button>
             </DialogTitle>
           </DialogHeader>
-
-          <div className="p-4 sm:p-6 space-y-8">
+          <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
             {loading ? (
               <LoadingSkeleton />
             ) : (
               <>
                 {/* Profile Header */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="flex flex-col sm:flex-row items-center sm:items-start gap-6"
+                  className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6"
                 >
                   <div className="relative group">
-                    <Avatar className="w-24 h-24 sm:w-28 sm:h-28 ring-4 ring-primary/10 transition-all duration-300 group-hover:ring-primary/20 group-hover:shadow-xl">
+                    <Avatar className="w-16 h-16 sm:w-20 sm:h-20 ring-2 ring-primary/10 transition-all duration-300 group-hover:ring-primary/30 rounded-full">
                       <AvatarImage src={data.profileimg} className="object-cover" />
-                      <AvatarFallback className="text-3xl font-bold bg-gradient-to-br from-primary/80 to-primary text-primary-foreground">
+                      <AvatarFallback className="text-xl sm:text-2xl font-bold bg-gradient-to-br from-primary/80 to-primary text-primary-foreground">
                         {data.username[0].toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="absolute -bottom-2 -right-2 bg-green-500/90 w-6 h-6 rounded-full border-2 border-background flex items-center justify-center animate-pulse">
+                    <div className="absolute -bottom-1 -right-1 bg-green-500/90 w-5 h-5 rounded-full border-2 border-background flex items-center justify-center">
                       <Activity className="h-3 w-3 text-white" />
                     </div>
                   </div>
-                  
-                  <div className="flex-1 text-center sm:text-left space-y-3">
-                    <h3 className="text-3xl font-bold bg-gradient-to-r from-primary to-foreground bg-clip-text text-transparent">
+                  <div className="flex-1 text-center sm:text-left space-y-2">
+                    <h3 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-foreground bg-clip-text text-transparent">
                       {data.username}
                     </h3>
                     <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
                       {data.class && (
-                        <Badge variant="secondary" className="gap-1 px-3 py-1 text-sm">
-                          <BookOpen className="h-3 w-3" />
+                        <Badge
+                          variant="secondary"
+                          className="gap-1 px-3 py-1 text-xs sm:text-sm rounded-md"
+                        >
+                          <BookOpen className="h-4 w-4" />
                           {data.class}
                         </Badge>
                       )}
                       {data.roll_num && (
-                        <Badge variant="outline" className="gap-1 px-3 py-1 text-sm">
-                          <User className="h-3 w-3" />
+                        <Badge
+                          variant="outline"
+                          className="gap-1 px-3 py-1 text-xs sm:text-sm rounded-md"
+                        >
+                          <User className="h-4 w-4" />
                           {data.roll_num}
                         </Badge>
                       )}
-                      <Badge variant="default" className="gap-1 px-3 py-1 text-sm">
-                        <Calendar className="h-3 w-3" />
+                      <Badge
+                        variant="default"
+                        className="gap-1 px-3 py-1 text-xs sm:text-sm rounded-md"
+                      >
+                        <Calendar className="h-4 w-4" />
                         Active on {lastActiveFormatted}
                       </Badge>
+                      {data.leetcode_id && (
+                        <Badge
+                          variant="default"
+                          className="gap-1 px-3 py-1 text-xs sm:text-sm rounded-md"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                          <a
+                            href={`https://leetcode.com/${data.leetcode_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline"
+                          >
+                            LeetCode
+                          </a>
+                        </Badge>
+                      )}
                     </div>
-                    
                     {data.recent_languages && data.recent_languages.length > 0 && (
-                      <div className="flex flex-wrap gap-1 justify-center sm:justify-start mt-3">
-                        {data.recent_languages.map((lang: string, index: number) => (
-                          <Badge key={index} variant="outline" className="text-xs gap-1 px-2 py-1">
-                            <Code className="h-3 w-3" />
+                      <div className="flex flex-wrap gap-2 justify-center sm:justify-start mt-2">
+                        {data.recent_languages.map((lang, index) => (
+                          <Badge
+                            key={index}
+                            variant="outline"
+                            className="text-xs sm:text-sm gap-1 px-2.5 py-1 rounded-md"
+                          >
+                            <Code className="h-4 w-4" />
                             {lang}
                           </Badge>
                         ))}
@@ -251,106 +301,58 @@ export default function UserDetailModal({ user = sampleUser, children }: any) {
                     )}
                   </div>
                 </motion.div>
-
-                <Separator className="my-4" />
-
+                <Separator className="my-3 sm:my-4" />
                 {/* Stats Grid */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+                  className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
                 >
                   <StatCard
                     icon={Trophy}
                     label="Total Solved"
                     value={data.totalsolved || 0}
-                    className="lg:col-span-1 bg-gradient-to-br from-primary/5 to-primary/10"
+                    className="bg-gradient-to-br from-primary/10 to-primary/20"
                   />
                   <StatCard
                     icon={Target}
-                    label="Easy Problems"
+                    label="Easy"
                     value={solved.easy}
-                    className="border-green-100 bg-green-50/30"
+                    className="border-green-100 bg-green-50/30 dark:bg-green-900/30"
                   />
                   <StatCard
                     icon={Award}
-                    label="Medium Problems"
+                    label="Medium"
                     value={solved.medium}
-                    className="border-yellow-100 bg-yellow-50/30"
+                    className="border-yellow-100 bg-yellow-50/30 dark:bg-yellow-900/30"
                   />
                   <StatCard
                     icon={TrendingUp}
-                    label="Hard Problems"
+                    label="Hard"
                     value={solved.hard}
-                    className="border-red-100 bg-red-50/30"
+                    className="border-red-100 bg-red-50/30 dark:bg-red-900/30"
                   />
                 </motion.div>
-
-                {/* Charts Section */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
+                {/* Bar Chart */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="grid grid-cols-1 lg:grid-cols-2 gap-6"
                 >
-                  {/* Pie Chart */}
-                  <Card className="shadow-md overflow-hidden border border-border/50">
-                    <CardContent className="p-6">
-                      <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <Target className="h-5 w-5 text-primary" />
-                        Problem Distribution
-                      </h4>
-                      <div className="h-64 sm:h-72">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={pieData}
-                              dataKey="value"
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={100}
-                              paddingAngle={3}
-                              
-                              labelLine={false}
-                            >
-                              {pieData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} stroke={entry.color} strokeWidth={2} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              contentStyle={{
-                                backgroundColor: "hsl(var(--background))",
-                                border: "1px solid hsl(var(--border))",
-                                borderRadius: "var(--radius)",
-                                padding: "8px 12px",
-                                boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-                              }}
-                            />
-                            <Legend 
-                              wrapperStyle={{ 
-                                paddingTop: "16px",
-                                fontSize: "0.875rem"
-                              }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Bar Chart */}
-                  <Card className="shadow-md overflow-hidden border border-border/50">
-                    <CardContent className="p-6">
-                      <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <Activity className="h-5 w-5 text-primary" />
+                  <Card className="shadow-md border border-border/20 rounded-xl">
+                    <CardContent className="p-3 sm:p-4">
+                      <h4 className="text-sm sm:text-base font-semibold mb-3 flex items-center gap-1.5 sm:gap-2">
+                        <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                         Difficulty Breakdown
                       </h4>
-                      <div className="h-64 sm:h-72">
+                      <div className="h-36 sm:h-40">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={barData} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" opacity={0.4} />
+                          <BarChart
+                            data={barData}
+                            margin={{ top: 10, right: 10, left: -10, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                             <XAxis dataKey="difficulty" tick={{ fontSize: 12 }} />
                             <YAxis tick={{ fontSize: 12 }} />
                             <Tooltip
@@ -358,11 +360,11 @@ export default function UserDetailModal({ user = sampleUser, children }: any) {
                                 backgroundColor: "hsl(var(--background))",
                                 border: "1px solid hsl(var(--border))",
                                 borderRadius: "var(--radius)",
-                                padding: "8px 12px",
-                                boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
+                                padding: "6px 10px",
+                                fontSize: "12px",
                               }}
                             />
-                            <Bar dataKey="solved" radius={[8, 8, 0, 0]}>
+                            <Bar dataKey="solved" radius={[6, 6, 0, 0]}>
                               {barData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={entry.color} />
                               ))}
@@ -373,28 +375,35 @@ export default function UserDetailModal({ user = sampleUser, children }: any) {
                     </CardContent>
                   </Card>
                 </motion.div>
-
                 {/* Weekly Progress */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
                 >
-                  <Card className="bg-gradient-to-r from-primary/5 to-secondary/5 border-primary/10 shadow-md overflow-hidden">
-                    <CardContent className="p-6">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 rounded-full bg-primary/10 ring-1 ring-primary/20">
-                            <Calendar className="h-6 w-6 text-primary" />
+                  <Card className="bg-gradient-to-r from-primary/5 to-secondary/5 border-primary/10 shadow-md rounded-xl">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <div className="p-2 rounded-md bg-primary/10">
+                            <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                           </div>
                           <div>
-                            <h4 className="text-xl font-semibold">Weekly Progress</h4>
-                            <p className="text-muted-foreground text-sm">Your coding momentum this week</p>
+                            <h4 className="text-sm sm:text-base font-semibold">
+                              Weekly Progress
+                            </h4>
+                            <p className="text-xs sm:text-sm text-muted-foreground">
+                              Your coding momentum this week
+                            </p>
                           </div>
                         </div>
                         <div className="text-right w-full sm:w-auto">
-                          <p className="text-4xl font-bold text-primary">{data.weekly_solved || 0}</p>
-                          <p className="text-sm text-muted-foreground">Problems Solved</p>
+                          <p className="text-xl sm:text-2xl font-bold text-primary">
+                            {data.weekly_solved || 0}
+                          </p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
+                            Problems Solved
+                          </p>
                         </div>
                       </div>
                     </CardContent>
