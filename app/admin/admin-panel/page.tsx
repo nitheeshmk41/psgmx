@@ -9,6 +9,31 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { refreshUser as refreshUserLib } from "@/lib/refreshUser";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
+import { Upload, Loader2, LogOut, UserPlus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 interface User {
   id: number;
@@ -20,6 +45,7 @@ interface User {
 
 export default function Admin() {
   const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [form, setForm] = useState({
     username: "",
     roll_num: "",
@@ -28,7 +54,8 @@ export default function Admin() {
   });
   const [loadingAll, setLoadingAll] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [loadingSingleId, setLoadingSingleId] = useState<number | null>(null); // for single user loading
+  const [loadingSingleId, setLoadingSingleId] = useState<number | null>(null);
+  const [classFilter, setClassFilter] = useState<string>("all");
   const router = useRouter();
 
   useEffect(() => {
@@ -37,12 +64,15 @@ export default function Admin() {
     });
   }, [router]);
 
-  // Fetch all users from Supabase
   const fetchUsers = async () => {
     try {
       const { data, error } = await supabase.from("users").select("*");
       if (error) throw error;
-      setUsers(data || []);
+      const sortedUsers = (data || []).sort((a, b) =>
+        a.roll_num.localeCompare(b.roll_num)
+      );
+      setUsers(sortedUsers);
+      filterUsers(sortedUsers, classFilter);
     } catch (err: any) {
       toast.error("Failed to fetch users: " + err.message);
     }
@@ -52,7 +82,22 @@ export default function Admin() {
     fetchUsers();
   }, []);
 
-  // Refresh single user
+  const filterUsers = (users: User[], classFilter: string) => {
+    let filtered = users;
+    if (classFilter !== "all") {
+      filtered = users.filter((u) => u.class.toLowerCase() === classFilter.toLowerCase());
+    }
+    setFilteredUsers(
+      filtered.filter((u) =>
+        u.roll_num.match(/^25mx(100|[1-2][0-9]{2}|3[0-6][0-9]|370)$/i)
+      )
+    );
+  };
+
+  useEffect(() => {
+    filterUsers(users, classFilter);
+  }, [classFilter, users]);
+
   const refreshUser = async (user: User) => {
     setLoadingSingleId(user.id);
     try {
@@ -66,22 +111,28 @@ export default function Admin() {
     }
   };
 
-  // Admin refresh all users
   const refreshAllUsers = async () => {
     setLoadingAll(true);
     setProgress(0);
-    for (let i = 0; i < users.length; i++) {
-      await refreshUser(users[i]);
-      setProgress(Math.round(((i + 1) / users.length) * 100));
+    for (let i = 0; i < filteredUsers.length; i++) {
+      await refreshUser(filteredUsers[i]);
+      setProgress(Math.round(((i + 1) / filteredUsers.length) * 100));
     }
     setLoadingAll(false);
     toast.success("All users refreshed!");
   };
 
-  // Add single user
   const addUser = async () => {
     if (!form.username || !form.leetcode_id) {
-      toast.error("Username and LeetCode ID required");
+      toast.error("Username and LeetCode ID are required");
+      return;
+    }
+    if (!form.roll_num.match(/^25mx(100|[1-2][0-9]{2}|3[0-6][0-9]|370)$/i)) {
+      toast.error("Roll number must be between 25mx100 and 25mx370");
+      return;
+    }
+    if (form.class && !["G1", "G2"].includes(form.class.toUpperCase())) {
+      toast.error("Class must be either G1 or G2");
       return;
     }
 
@@ -89,14 +140,13 @@ export default function Admin() {
       const { error } = await supabase.from("users").insert([form]);
       if (error) throw error;
       toast.success("User added! Fetching stats...");
-      await refreshUser({ ...form, id: 0 } as User); // temporary id for refresh
+      await refreshUser({ ...form, id: 0 } as User);
       setForm({ username: "", roll_num: "", leetcode_id: "", class: "" });
     } catch (err: any) {
       toast.error("Failed to add user: " + err.message);
     }
   };
 
-  // Bulk upload
   const bulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return;
     const file = e.target.files[0];
@@ -110,8 +160,17 @@ export default function Admin() {
         class: r.class,
         id: 0,
       }));
-    } catch {
-      toast.error("Invalid JSON file");
+      // Validate bulk upload data
+      for (const record of records) {
+        if (!record.roll_num.match(/^25mx(100|[1-2][0-9]{2}|3[0-6][0-9]|370)$/i)) {
+          throw new Error(`Invalid roll number: ${record.roll_num}`);
+        }
+        if (record.class && !["G1", "G2"].includes(record.class.toUpperCase())) {
+          throw new Error(`Invalid class: ${record.class}`);
+        }
+      }
+    } catch (err: any) {
+      toast.error("Invalid JSON file: " + err.message);
       return;
     }
 
@@ -130,7 +189,6 @@ export default function Admin() {
     }
   };
 
-  // Delete user
   const deleteUser = async (id: number, leetcode_id: string) => {
     try {
       const { error } = await supabase.from("users").delete().eq("id", id);
@@ -143,92 +201,223 @@ export default function Admin() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="w-1/2">
+    <div className="container mx-auto p-6 space-y-8 max-w-7xl">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+        <div className="flex gap-4">
           <Button
             onClick={refreshAllUsers}
             disabled={loadingAll}
-            className="w-full"
+            className="w-full sm:w-auto bg-primary hover:bg-primary/90 transition-colors"
           >
-            Refresh All Users
+            {loadingAll ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Refreshing...
+              </>
+            ) : (
+              "Refresh All Users"
+            )}
           </Button>
-          {loadingAll && <Progress value={progress} className="mt-2" />}
+          <Button
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.push("/admin");
+            }}
+            variant="destructive"
+            className="w-full sm:w-auto"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </Button>
         </div>
-
-        <Button
-          onClick={async () => {
-            await supabase.auth.signOut();
-            router.push("/admin");
-          }}
-          variant="destructive"
-        >
-          Logout
-        </Button>
       </div>
 
+      {loadingAll && (
+        <div className="space-y-2">
+          <Progress value={progress} className="w-full h-2" />
+          <p className="text-sm text-muted-foreground">
+            Refreshing users: {progress}%
+          </p>
+        </div>
+      )}
+
+      {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle>Add User / Bulk Upload</CardTitle>
+          <CardTitle>Filter Users</CardTitle>
         </CardHeader>
-        <CardContent className="flex gap-2 flex-wrap">
-          <Input
-            placeholder="Username"
-            value={form.username}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-          />
-          <Input
-            placeholder="Roll No"
-            value={form.roll_num}
-            onChange={(e) => setForm({ ...form, roll_num: e.target.value })}
-          />
-          <Input
-            placeholder="LeetCode ID"
-            value={form.leetcode_id}
-            onChange={(e) => setForm({ ...form, leetcode_id: e.target.value })}
-          />
-          <Input
-            placeholder="Class"
-            value={form.class}
-            onChange={(e) => setForm({ ...form, class: e.target.value })}
-          />
-          <Button onClick={addUser}>Add</Button>
-          <input type="file" accept=".json" onChange={bulkUpload} />
-          {progress > 0 && (
-            <Progress value={progress} className="w-full mt-2" />
-          )}
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="class-filter">Class</Label>
+              <Select
+                value={classFilter}
+                onValueChange={setClassFilter}
+              >
+                <SelectTrigger id="class-filter" className="w-[180px]">
+                  <SelectValue placeholder="Select class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Classes</SelectItem>
+                  <SelectItem value="G1">G1</SelectItem>
+                  <SelectItem value="G2">G2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {users.map((u) => (
-          <Card key={u.id}>
-            <CardHeader>
-              <CardTitle>
-                {u.username} ({u.roll_num})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p>LeetCode ID: {u.leetcode_id}</p>
-              <p>Class: {u.class}</p>
-              <div className="flex gap-3 mt-3">
-                <Button
-                  variant="destructive"
-                  onClick={() => deleteUser(u.id, u.leetcode_id)}
-                >
-                  Delete
-                </Button>
-                <Button
-                  onClick={() => refreshUser(u)}
-                  disabled={loadingSingleId === u.id}
-                >
-                  {loadingSingleId === u.id ? "Refreshing..." : "Refresh Now"}
-                </Button>
+      {/* Add User Form */}
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button className="w-full sm:w-auto">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add New User
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Add New User</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                placeholder="Enter username"
+                value={form.username}
+                onChange={(e) => setForm({ ...form, username: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="roll_num">Roll Number</Label>
+              <Input
+                id="roll_num"
+                placeholder="Enter roll number (25mx100 to 25mx370)"
+                value={form.roll_num}
+                onChange={(e) => setForm({ ...form, roll_num: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="leetcode_id">LeetCode ID</Label>
+              <Input
+                id="leetcode_id"
+                placeholder="Enter LeetCode ID"
+                value={form.leetcode_id}
+                onChange={(e) => setForm({ ...form, leetcode_id: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="class">Class</Label>
+              <Select
+                value={form.class}
+                onValueChange={(value) => setForm({ ...form, class: value })}
+              >
+                <SelectTrigger id="class">
+                  <SelectValue placeholder="Select class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="G1">G1</SelectItem>
+                  <SelectItem value="G2">G2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={addUser} className="mt-4">
+              Add User
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Upload */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Bulk Upload Users</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <Button asChild>
+              <label htmlFor="bulk-upload" className="cursor-pointer">
+                <Upload className="mr-2 h-4 w-4" />
+                Upload JSON File
+                <input
+                  id="bulk-upload"
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={bulkUpload}
+                />
+              </label>
+            </Button>
+            {progress > 0 && (
+              <div className="flex-1">
+                <Progress value={progress} className="w-full h-2" />
+                <p className="text-sm text-muted-foreground mt-2">
+                  Uploading: {progress}%
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Users Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Users</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Username</TableHead>
+                <TableHead>Roll No</TableHead>
+                <TableHead>LeetCode ID</TableHead>
+                <TableHead>Class</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredUsers.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell className="font-medium">{u.username}</TableCell>
+                  <TableCell>{u.roll_num}</TableCell>
+                  <TableCell>{u.leetcode_id}</TableCell>
+                  <TableCell>{u.class}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => deleteUser(u.id, u.leetcode_id)}
+                      >
+                        Delete
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => refreshUser(u)}
+                        disabled={loadingSingleId === u.id}
+                      >
+                        {loadingSingleId === u.id ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Refreshing
+                          </>
+                        ) : (
+                          "Refresh"
+                        )}
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
