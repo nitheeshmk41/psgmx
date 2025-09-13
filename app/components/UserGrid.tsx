@@ -35,7 +35,6 @@ interface User {
   last_active?: string;
   weeklyRank?: number;
   overallRank?: number;
-  ranking?: number;
 }
 
 const USERS_PER_PAGE = 12;
@@ -76,7 +75,6 @@ export default function UserGrid() {
     fetchUsers();
   }, []);
 
-  // Filter users when users, filter, or search changes
   useEffect(() => {
     const matches = users.filter((user) => {
       const matchesClass = filterClass === "ALL" || user.class === filterClass;
@@ -89,10 +87,8 @@ export default function UserGrid() {
     setCurrentPage(1);
   }, [users, filterClass, searchTerm]);
 
-  // Compute ranks with tie-handling
   const usersWithRanks = computeRanks(filteredUsers);
 
-  // Top 3
   const top3Weekly = [...usersWithRanks]
     .sort((a, b) => (a.weeklyRank ?? Infinity) - (b.weeklyRank ?? Infinity))
     .slice(0, 3);
@@ -100,7 +96,6 @@ export default function UserGrid() {
     .sort((a, b) => (a.overallRank ?? Infinity) - (b.overallRank ?? Infinity))
     .slice(0, 3);
 
-  // Sorted list for current tab
   const sortedUsers = [...usersWithRanks].sort((a, b) =>
     rankType === "weekly"
       ? (a.weeklyRank ?? Infinity) - (b.weeklyRank ?? Infinity)
@@ -116,13 +111,10 @@ export default function UserGrid() {
   const onPageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
-
   const onNextPage = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
   const onPrevPage = () => currentPage > 1 && setCurrentPage(currentPage - 1);
-
   const canGoNext = currentPage < totalPages;
   const canGoPrev = currentPage > 1;
-
   const isSearching = searchTerm.trim() !== "";
 
   if (loading) {
@@ -148,13 +140,28 @@ export default function UserGrid() {
 
       {!isSearching && (
         <>
-          <Leaderboard title="Top 3 Weekly Leaders" users={top3Weekly} type="weekly" refreshUser={refreshUser} refreshingIds={refreshingIds} />
-          <Leaderboard title="Top 3 Overall Leaders" users={top3Overall} type="overall" refreshUser={refreshUser} refreshingIds={refreshingIds} />
+          <Leaderboard
+            title="Top 3 Weekly Leaders"
+            users={top3Weekly}
+            type="weekly"
+            refreshUser={refreshUser}
+            refreshingIds={refreshingIds}
+          />
+          <Leaderboard
+            title="Top 3 Overall Leaders"
+            users={top3Overall}
+            type="overall"
+            refreshUser={refreshUser}
+            refreshingIds={refreshingIds}
+          />
         </>
       )}
 
       <div className="flex justify-center">
-        <Tabs defaultValue={rankType} onValueChange={(value) => setRankType(value as "weekly" | "overall")}>
+        <Tabs
+          defaultValue={rankType}
+          onValueChange={(value) => setRankType(value as "weekly" | "overall")}
+        >
           <TabsList>
             <TabsTrigger value="weekly">Weekly Rank</TabsTrigger>
             <TabsTrigger value="overall">Overall Rank</TabsTrigger>
@@ -162,24 +169,33 @@ export default function UserGrid() {
         </Tabs>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {paginatedUsers.map((user) => (
-          <UserDetailModal key={user.id} user={user}>
-            <UserCard user={user} refreshUser={refreshUser} refreshingIds={refreshingIds} />
-          </UserDetailModal>
-        ))}
+{/* User Grid */}
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  {paginatedUsers.map((user) => (
+    <UserDetailModal key={user.id} user={user}>
+      <div className="cursor-pointer">
+        <UserCard
+          user={user}
+          refreshUser={refreshUser}
+          refreshingIds={refreshingIds}
+        />
       </div>
+    </UserDetailModal>
+  ))}
+</div>
 
+
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center">
           <Pagination>
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious onClick={onPrevPage} className={cn(!canGoPrev && "pointer-events-none opacity-50")} />
+                <PaginationPrevious className={cn(!canGoPrev && "pointer-events-none opacity-50")} onClick={onPrevPage} />
               </PaginationItem>
               {renderPaginationItems(totalPages, currentPage, onPageChange)}
               <PaginationItem>
-                <PaginationNext onClick={onNextPage} className={cn(!canGoNext && "pointer-events-none opacity-50")} />
+                <PaginationNext className={cn(!canGoNext && "pointer-events-none opacity-50")} onClick={onNextPage} />
               </PaginationItem>
             </PaginationContent>
           </Pagination>
@@ -193,12 +209,22 @@ export default function UserGrid() {
 
 // ---------------- Components ----------------
 
-function UserCard({ user, refreshUser, refreshingIds }: { user: User; refreshUser: (user: User) => void; refreshingIds: number[] }) {
+function UserCard({
+  user,
+  refreshUser,
+  refreshingIds,
+}: {
+  user: User;
+  refreshUser: (user: User) => void;
+  refreshingIds: number[];
+}) {
   return (
     <Card className="group relative cursor-pointer hover:shadow-lg transition-all duration-300">
       <CardHeader className="flex justify-between items-center">
+        
         <div className="flex items-center gap-3">
           <Avatar className="w-12 h-12">
+            
             <AvatarImage src={user.profileimg || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} alt={user.username} />
             <AvatarFallback>{user.username[0]}</AvatarFallback>
           </Avatar>
@@ -237,7 +263,19 @@ function UserCard({ user, refreshUser, refreshingIds }: { user: User; refreshUse
   );
 }
 
-function Leaderboard({ title, users, type, refreshUser, refreshingIds }: { title: string; users: User[]; type: "weekly" | "overall"; refreshUser: (user: User) => void; refreshingIds: number[] }) {
+function Leaderboard({
+  title,
+  users,
+  type,
+  refreshUser,
+  refreshingIds,
+}: {
+  title: string;
+  users: User[];
+  type: "weekly" | "overall";
+  refreshUser: (user: User) => void;
+  refreshingIds: number[];
+}) {
   return (
     <div>
       <h3 className="text-xl font-bold tracking-tight mb-4">{title}</h3>
@@ -261,7 +299,15 @@ function Leaderboard({ title, users, type, refreshUser, refreshingIds }: { title
                     <p className="text-xs text-muted-foreground">{user.roll_num}</p>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); refreshUser(user); }} disabled={refreshingIds.includes(user.id)}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    refreshUser(user);
+                  }}
+                  disabled={refreshingIds.includes(user.id)}
+                >
                   <RefreshCw className={cn("h-4 w-4", refreshingIds.includes(user.id) && "animate-spin")} />
                 </Button>
               </CardHeader>
@@ -294,21 +340,34 @@ function renderPaginationItems(totalPages: number, currentPage: number, onPageCh
   const maxVisiblePages = 5;
   let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
   const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
   if (endPage - startPage + 1 < maxVisiblePages) startPage = Math.max(1, endPage - maxVisiblePages + 1);
 
   if (startPage > 1) {
-    items.push(<PaginationItem key={1}><PaginationLink onClick={() => onPageChange(1)}>1</PaginationLink></PaginationItem>);
+    items.push(
+      <PaginationItem key={1}>
+        <PaginationLink onClick={() => onPageChange(1)}>1</PaginationLink>
+      </PaginationItem>
+    );
     if (startPage > 2) items.push(<PaginationItem key="ellipsis1"><PaginationEllipsis /></PaginationItem>);
   }
 
   for (let i = startPage; i <= endPage; i++) {
-    items.push(<PaginationItem key={i}><PaginationLink onClick={() => onPageChange(i)} isActive={currentPage === i}>{i}</PaginationLink></PaginationItem>);
+    items.push(
+      <PaginationItem key={i}>
+        <PaginationLink onClick={() => onPageChange(i)} isActive={currentPage === i}>
+          {i}
+        </PaginationLink>
+      </PaginationItem>
+    );
   }
 
   if (endPage < totalPages) {
     if (endPage < totalPages - 1) items.push(<PaginationItem key="ellipsis2"><PaginationEllipsis /></PaginationItem>);
-    items.push(<PaginationItem key={totalPages}><PaginationLink onClick={() => onPageChange(totalPages)}>{totalPages}</PaginationLink></PaginationItem>);
+    items.push(
+      <PaginationItem key={totalPages}>
+        <PaginationLink onClick={() => onPageChange(totalPages)}>{totalPages}</PaginationLink>
+      </PaginationItem>
+    );
   }
 
   return items;
@@ -346,25 +405,18 @@ function NoUsers() {
 
 function computeRanks(users: User[]) {
   const cloned = users.map((u) => ({ ...u }));
-
-  // Weekly Rank
   cloned.sort((a, b) => (b.weekly_solved || 0) - (a.weekly_solved || 0));
   cloned.forEach((user, idx) => {
     if (idx > 0 && user.weekly_solved === cloned[idx - 1].weekly_solved) {
       user.weeklyRank = cloned[idx - 1].weeklyRank;
-    } else {
-      user.weeklyRank = idx + 1;
-    }
+    } else user.weeklyRank = idx + 1;
   });
 
-  // Overall Rank
   cloned.sort((a, b) => (b.totalsolved || 0) - (a.totalsolved || 0));
   cloned.forEach((user, idx) => {
     if (idx > 0 && user.totalsolved === cloned[idx - 1].totalsolved) {
       user.overallRank = cloned[idx - 1].overallRank;
-    } else {
-      user.overallRank = idx + 1;
-    }
+    } else user.overallRank = idx + 1;
   });
 
   return cloned;

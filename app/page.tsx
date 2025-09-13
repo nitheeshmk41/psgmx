@@ -7,7 +7,6 @@ import StatsCard from "./components/Stats/StatsCard";
 import GroupStats from "./components/Stats/GroupStats";
 import UserGrid from "./components/UserGrid";
 import Charts from "./components/Charts";
-import { usePagination } from "./hooks/usePagination";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
@@ -37,8 +36,6 @@ interface POTD {
   };
 }
 
-const USERS_PER_PAGE = 10;
-
 export default function LeaderboardDashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +49,7 @@ export default function LeaderboardDashboard() {
     setLoading(true);
     const { data, error } = await supabase.from("users").select("*");
     if (error) toast.error("Failed to fetch users");
-    setUsers(data || []);
+    else setUsers(data || []);
     setLoading(false);
   };
 
@@ -87,7 +84,7 @@ export default function LeaderboardDashboard() {
     fetchPOTD();
   }, []);
 
-  // Filter and search
+  // Filtered Users
   const filteredUsers = users.filter((user) => {
     const matchesClass = filterClass === "ALL" || user.class === filterClass;
     const matchesSearch =
@@ -96,40 +93,33 @@ export default function LeaderboardDashboard() {
     return matchesClass && matchesSearch;
   });
 
-  // Add ranks
+  // Add ranks once
   const usersWithRanks = filteredUsers.map((user) => {
     const weeklyRank =
       [...filteredUsers]
         .sort((a, b) => (b.weekly_solved || 0) - (a.weekly_solved || 0))
         .findIndex((u) => u.id === user.id) + 1;
+
     const overallRank =
       [...filteredUsers]
-        .sort((a, b) => (a.ranking || Infinity) - (b.ranking || Infinity))
+        .sort((a, b) => (b.totalsolved || 0) - (a.totalsolved || 0))
         .findIndex((u) => u.id === user.id) + 1;
+
     return { ...user, weeklyRank, overallRank };
   });
 
-  // Pagination
-  const {
-    currentPage,
-    totalPages,
-    paginatedData,
-    goToPage,
-    nextPage,
-    prevPage,
-    canGoNext,
-    canGoPrev,
-  } = usePagination(usersWithRanks, USERS_PER_PAGE);
-
-  const getTopUser = (arr: User[], key: "weekly_solved" | "totalsolved" | "ranking") =>
+  // Top user helper
+  const getTopUser = (
+    arr: User[],
+    key: "weekly_solved" | "totalsolved" | "ranking"
+  ) =>
     arr.length
-      ? [...arr].sort((a, b) => {
-          if (key === "ranking") {
-            return (a[key] || Infinity) - (b[key] || Infinity);
-          } else {
-            return (b[key] || 0) - (a[key] || 0);
-          }
-        })[0]?.username || "-"
+      ? [...arr]
+          .sort((a, b) =>
+            key === "ranking"
+              ? (a[key] || Infinity) - (b[key] || Infinity)
+              : (b[key] || 0) - (a[key] || 0)
+          )[0]?.username || "-"
       : "-";
 
   // Dashboard stats
@@ -141,7 +131,7 @@ export default function LeaderboardDashboard() {
   const weeklyLeader = getTopUser(users, "weekly_solved");
   const overallLeader = getTopUser(users, "ranking");
 
-  // Groups
+  // Group stats
   const groupG1 = users.filter((u) => u.class === "G1");
   const groupG2 = users.filter((u) => u.class === "G2");
 
@@ -156,28 +146,20 @@ export default function LeaderboardDashboard() {
       >
         <Navbar />
         <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+          {/* Skeleton cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
-              <Skeleton
-                key={i}
-                className="h-24 w-full rounded-xl bg-muted"
-              />
+              <Skeleton key={i} className="h-24 w-full rounded-xl bg-muted" />
             ))}
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {[...Array(2)].map((_, i) => (
-              <Skeleton
-                key={i}
-                className="h-40 w-full rounded-xl bg-muted"
-              />
+              <Skeleton key={i} className="h-40 w-full rounded-xl bg-muted" />
             ))}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[...Array(8)].map((_, i) => (
-              <Skeleton
-                key={i}
-                className="h-48 w-full rounded-xl bg-muted"
-              />
+              <Skeleton key={i} className="h-48 w-full rounded-xl bg-muted" />
             ))}
           </div>
         </div>
@@ -254,8 +236,6 @@ export default function LeaderboardDashboard() {
           <Charts users={users} />
         </motion.div>
 
-        
-
         {/* User Grid */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
@@ -263,7 +243,6 @@ export default function LeaderboardDashboard() {
           transition={{ delay: 0.6 }}
         >
           <UserGrid />
-       
         </motion.div>
       </div>
     </motion.div>
