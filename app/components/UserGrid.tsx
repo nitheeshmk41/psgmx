@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Trophy, Code2, RefreshCw, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Pagination,
@@ -16,7 +15,14 @@ import {
   PaginationEllipsis,
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabaseClient";
+import { toast } from "sonner";
 import UserDetailModal from "./UserDetailModal";
+import SearchAndFilter from "./SearchAndFilter";
+import { Skeleton } from "@/components/ui/skeleton";
+import Navbar from "./Navbar";
 
 interface User {
   id: number;
@@ -27,79 +33,96 @@ interface User {
   weekly_solved: number;
   leetcode_id?: string;
   profileimg?: string;
+  last_active?: string;
   weeklyRank?: number;
   overallRank?: number;
+  ranking?: number;
 }
 
-interface UserGridProps {
-  users: User[];
-  refreshingIds: number[];
-  onRefreshUser: (user: User) => void;
-  currentPage: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-  canGoNext: boolean;
-  canGoPrev: boolean;
-  onNextPage: () => void;
-  onPrevPage: () => void;
-}
+const USERS_PER_PAGE = 12;
 
-// Compute ranks with tie-handling
-function computeRanks(users: User[]) {
-  // Weekly rank
-  const weeklySorted = [...users].sort(
-    (a, b) => b.weekly_solved - a.weekly_solved
-  );
-  let currentRank = 1;
-  weeklySorted.forEach((user, idx) => {
-    if (idx > 0 && user.weekly_solved === weeklySorted[idx - 1].weekly_solved) {
-      user.weeklyRank = weeklySorted[idx - 1].weeklyRank;
-    } else {
-      user.weeklyRank = currentRank;
-    }
-    currentRank++;
-  });
-
-  // Overall rank
-  const overallSorted = [...users].sort(
-    (a, b) => b.totalsolved - a.totalsolved
-  );
-  currentRank = 1;
-  overallSorted.forEach((user, idx) => {
-    if (idx > 0 && user.totalsolved === overallSorted[idx - 1].totalsolved) {
-      user.overallRank = overallSorted[idx - 1].overallRank;
-    } else {
-      user.overallRank = currentRank;
-    }
-    currentRank++;
-  });
-
-  return users;
-}
-
-export default function UserGrid({
-  users,
-  refreshingIds,
-  onRefreshUser,
-  currentPage,
-  totalPages,
-  onPageChange,
-  canGoNext,
-  canGoPrev,
-  onNextPage,
-  onPrevPage,
-}: UserGridProps) {
+export default function UserGrid() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshingIds, setRefreshingIds] = useState<number[]>([]);
+  const [filterClass, setFilterClass] = useState<"G1" | "G2" | "ALL">("ALL");
+  const [searchTerm, setSearchTerm] = useState("");
   const [rankType, setRankType] = useState<"weekly" | "overall">("weekly");
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Compute ranks
-  const usersWithRanks = computeRanks(users);
+  const fetchUsers = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("users").select("*");
+    if (error) toast.error("Failed to fetch users");
+    setUsers(data || []);
+    setLoading(false);
+  };
 
-  // Sort by selected rank ascending (rank #1 first)
+  const refreshUser = async (user: User) => {
+    if (!user.leetcode_id) return;
+    setRefreshingIds((prev) => [...prev, user.id]);
+    try {
+      await fetch(`/api/user/${user.leetcode_id}`);
+      await fetchUsers();
+      toast.success(`${user.username}'s data refreshed successfully`);
+    } catch {
+      toast.error(`Failed to refresh ${user.username}'s data`);
+    } finally {
+      setRefreshingIds((prev) => prev.filter((id) => id !== user.id));
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const matches = users.filter((user) => {
+      const matchesClass = filterClass === "ALL" || user.class === filterClass;
+      const matchesSearch =
+        user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.roll_num.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesClass && matchesSearch;
+    });
+    setFilteredUsers(matches);
+    setCurrentPage(1); // Reset to first page on filter change
+  }, [users, filterClass, searchTerm]);
+
+  // Compute ranks on filtered users
+  const usersWithRanks = computeRanks(filteredUsers);
+
+  // Top 3 weekly
+  const top3Weekly = [...usersWithRanks].sort((a, b) => (a.weeklyRank ?? Infinity) - (b.weeklyRank ?? Infinity)).slice(0, 3);
+
+  // Top 3 overall
+  const top3Overall = [...usersWithRanks].sort((a, b) => (a.overallRank ?? Infinity) - (b.overallRank ?? Infinity)).slice(0, 3);
+
+  // Sorted users for list
   const sortedUsers = [...usersWithRanks].sort((a, b) => {
     if (rankType === "weekly")
       return (a.weeklyRank ?? Infinity) - (b.weeklyRank ?? Infinity);
     return (a.overallRank ?? Infinity) - (b.overallRank ?? Infinity);
   });
+
+  // Pagination
+  const totalPages = Math.ceil(sortedUsers.length / USERS_PER_PAGE);
+  const paginatedUsers = sortedUsers.slice((currentPage - 1) * USERS_PER_PAGE, currentPage * USERS_PER_PAGE);
+
+  const onPageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  };
+
+  const onNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+
+  const onPrevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
+  const canGoNext = currentPage < totalPages;
+  const canGoPrev = currentPage > 1;
 
   const renderPaginationItems = () => {
     const items = [];
@@ -157,35 +180,217 @@ export default function UserGrid({
     return items;
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Header & Rank Toggle */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight">Leaderboard</h2>
-        <div className="flex items-center space-x-3">
-          <span className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages} • {users.length} users
-          </span>
-          <Button
-            size="sm"
-            variant={rankType === "weekly" ? "default" : "outline"}
-            onClick={() => setRankType("weekly")}
-          >
-            Weekly Rank
-          </Button>
-          <Button
-            size="sm"
-            variant={rankType === "overall" ? "default" : "outline"}
-            onClick={() => setRankType("overall")}
-          >
-            Overall Rank
-          </Button>
+  const isSearching = searchTerm.trim() !== "";
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton
+                key={i}
+                className="h-24 w-full rounded-xl bg-muted"
+              />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[...Array(2)].map((_, i) => (
+              <Skeleton
+                key={i}
+                className="h-40 w-full rounded-xl bg-muted"
+              />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {[...Array(12)].map((_, i) => (
+              <Skeleton
+                key={i}
+                className="h-48 w-full rounded-xl bg-muted"
+              />
+            ))}
+          </div>
         </div>
       </div>
+    );
+  }
 
-      {/* User Cards */}
+  return (
+    <div className="space-y-6">
+      {/* Search & Filter */}
+      <SearchAndFilter
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        filterClass={filterClass}
+        onFilterChange={setFilterClass}
+        totalResults={filteredUsers.length}
+      />
+
+      {!isSearching && (
+        <>
+          {/* Top 3 Weekly */}
+          <div>
+            <h3 className="text-xl font-bold tracking-tight mb-4">Top 3 Weekly Leaders</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {top3Weekly.map((user) => (
+                <UserDetailModal key={user.id} user={user}>
+                  <Card className="group relative cursor-pointer hover:shadow-lg transition-all duration-300 border-2 border-yellow-400/30">
+                    <CardHeader className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <Avatar className="w-12 h-12">
+                            <AvatarImage
+                              src={
+                                user.profileimg ||
+                                `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`
+                              }
+                              alt={user.username}
+                            />
+                            <AvatarFallback>{user.username[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-yellow-400 text-white text-xs font-bold flex items-center justify-center">
+                            {user.weeklyRank}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="font-semibold">{user.username}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {user.roll_num}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          refreshUser(user);
+                        }}
+                        disabled={refreshingIds.includes(user.id)}
+                      >
+                        <RefreshCw
+                          className={cn(
+                            "h-4 w-4",
+                            refreshingIds.includes(user.id) && "animate-spin"
+                          )}
+                        />
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Trophy className="h-4 w-4 text-yellow-500" />
+                          <span className="text-sm font-medium">
+                            {user.totalsolved}
+                          </span>
+                          <span className="text-xs text-muted-foreground">Total</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Code2 className="h-4 w-4 text-green-500" />
+                          <span className="text-sm font-medium">
+                            {user.weekly_solved}
+                          </span>
+                          <span className="text-xs text-muted-foreground">Week</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </UserDetailModal>
+              ))}
+            </div>
+          </div>
+
+          {/* Top 3 Overall */}
+          <div>
+            <h3 className="text-xl font-bold tracking-tight mb-4">Top 3 Overall Leaders</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {top3Overall.map((user) => (
+                <UserDetailModal key={user.id} user={user}>
+                  <Card className="group relative cursor-pointer hover:shadow-lg transition-all duration-300 border-2 border-yellow-400/30">
+                    <CardHeader className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <Avatar className="w-12 h-12">
+                            <AvatarImage
+                              src={
+                                user.profileimg ||
+                                `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`
+                              }
+                              alt={user.username}
+                            />
+                            <AvatarFallback>{user.username[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-yellow-400 text-white text-xs font-bold flex items-center justify-center">
+                            {user.overallRank}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="font-semibold">{user.username}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {user.roll_num}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          refreshUser(user);
+                        }}
+                        disabled={refreshingIds.includes(user.id)}
+                      >
+                        <RefreshCw
+                          className={cn(
+                            "h-4 w-4",
+                            refreshingIds.includes(user.id) && "animate-spin"
+                          )}
+                        />
+                      </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Trophy className="h-4 w-4 text-yellow-500" />
+                          <span className="text-sm font-medium">
+                            {user.totalsolved}
+                          </span>
+                          <span className="text-xs text-muted-foreground">Total</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Code2 className="h-4 w-4 text-green-500" />
+                          <span className="text-sm font-medium">
+                            {user.weekly_solved}
+                          </span>
+                          <span className="text-xs text-muted-foreground">Week</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </UserDetailModal>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Rank Type Toggle */}
+      <div className="flex items-center justify-center">
+        <Tabs
+          defaultValue="weekly"
+          onValueChange={(value) => setRankType(value as "weekly" | "overall")}
+        >
+          <TabsList>
+            <TabsTrigger value="weekly">Weekly Rank</TabsTrigger>
+            <TabsTrigger value="overall">Overall Rank</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* User List */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {sortedUsers.map((user) => (
+        {paginatedUsers.map((user) => (
           <UserDetailModal key={user.id} user={user}>
             <Card className="group relative cursor-pointer hover:shadow-lg transition-all duration-300">
               <CardHeader className="flex justify-between items-center">
@@ -212,7 +417,7 @@ export default function UserGrid({
                   size="icon"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onRefreshUser(user);
+                    refreshUser(user);
                   }}
                   disabled={refreshingIds.includes(user.id)}
                 >
@@ -240,13 +445,6 @@ export default function UserGrid({
                     </span>
                     <span className="text-xs text-muted-foreground">Week</span>
                   </div>
-                </div>
-                <div className="mt-2">
-                  <Badge variant="outline">
-                    {rankType === "weekly"
-                      ? `Weekly Rank: #${user.weeklyRank}`
-                      : `Overall Rank: #${user.overallRank}`}
-                  </Badge>
                 </div>
               </CardContent>
             </Card>
@@ -290,4 +488,37 @@ export default function UserGrid({
       )}
     </div>
   );
+}
+
+// Compute ranks with tie-handling
+function computeRanks(users: User[]) {
+  // Weekly rank
+  const weeklySorted = [...users].sort(
+    (a, b) => (b.weekly_solved || 0) - (a.weekly_solved || 0)
+  );
+  let currentRank = 1;
+  weeklySorted.forEach((user, idx) => {
+    if (idx > 0 && user.weekly_solved === weeklySorted[idx - 1].weekly_solved) {
+      user.weeklyRank = weeklySorted[idx - 1].weeklyRank;
+    } else {
+      user.weeklyRank = currentRank;
+    }
+    currentRank += 1;
+  });
+
+  // Overall rank
+  const overallSorted = [...users].sort(
+    (a, b) => (a.ranking || Infinity) - (b.ranking || Infinity)
+  );
+  currentRank = 1;
+  overallSorted.forEach((user, idx) => {
+    if (idx > 0 && user.ranking === overallSorted[idx - 1].ranking) {
+      user.overallRank = overallSorted[idx - 1].overallRank;
+    } else {
+      user.overallRank = currentRank;
+    }
+    currentRank += 1;
+  });
+
+  return users;
 }
