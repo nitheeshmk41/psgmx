@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from "react";
 
 export function usePagination<T>(data: T[], itemsPerPage: number) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -19,21 +19,20 @@ export function usePagination<T>(data: T[], itemsPerPage: number) {
 
   const nextPage = () => {
     if (currentPage < totalPages) {
-      setCurrentPage(prev => prev + 1);
+      setCurrentPage((prev) => prev + 1);
     }
   };
 
   const prevPage = () => {
     if (currentPage > 1) {
-      setCurrentPage(prev => prev - 1);
+      setCurrentPage((prev) => prev - 1);
     }
   };
 
   const canGoNext = currentPage < totalPages;
   const canGoPrev = currentPage > 1;
 
-  // Reset to page 1 when data changes significantly
-  useMemo(() => {
+  useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1);
     }

@@ -7,7 +7,6 @@ import StatsCard from "./components/Stats/StatsCard";
 import GroupStats from "./components/Stats/GroupStats";
 import UserGrid from "./components/UserGrid";
 import Charts from "./components/Charts";
-import SearchAndFilter from "./components/SearchAndFilter";
 import { usePagination } from "./hooks/usePagination";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -263,18 +262,8 @@ export default function LeaderboardDashboard() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.6 }}
         >
-          <UserGrid
-            users={paginatedData}
-            refreshingIds={refreshingIds}
-            onRefreshUser={refreshUser}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={goToPage}
-            canGoNext={canGoNext}
-            canGoPrev={canGoPrev}
-            onNextPage={nextPage}
-            onPrevPage={prevPage}
-          />
+          <UserGrid />
+       
         </motion.div>
       </div>
     </motion.div>
