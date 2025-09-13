@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Trophy, TrendingUp } from "lucide-react";
+import {  Trophy, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface GroupStatsProps {

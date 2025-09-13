@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { refreshUser as refreshUserLib } from "@/lib/refreshUser";
+import { refreshUser as refreshUserLib, User } from "@/lib/refreshUser";
 import {
   Table,
   TableBody,
@@ -33,24 +33,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 
-interface User {
-  id: number;
-  username: string;
-  roll_num: string;
-  leetcode_id: string;
-  class: string;
-}
+// 👇 Form type allows empty class initially
+type UserForm = Omit<User, "id" | "totalsolved" | "weekly_solved"> & {
+  class?: "G1" | "G2" | "";
+};
 
 export default function Admin() {
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<UserForm>({
     username: "",
     roll_num: "",
     leetcode_id: "",
-    class: "",
+    class: "G1",
   });
   const [loadingAll, setLoadingAll] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -70,7 +66,7 @@ export default function Admin() {
       if (error) throw error;
       const sortedUsers = (data || []).sort((a, b) =>
         a.roll_num.localeCompare(b.roll_num)
-      );
+      ) as User[];
       setUsers(sortedUsers);
       filterUsers(sortedUsers, classFilter);
     } catch (err: any) {
@@ -85,7 +81,9 @@ export default function Admin() {
   const filterUsers = (users: User[], classFilter: string) => {
     let filtered = users;
     if (classFilter !== "all") {
-      filtered = users.filter((u) => u.class.toLowerCase() === classFilter.toLowerCase());
+      filtered = users.filter(
+        (u) => u.class?.toLowerCase() === classFilter.toLowerCase()
+      );
     }
     setFilteredUsers(
       filtered.filter((u) =>
@@ -141,7 +139,7 @@ export default function Admin() {
       if (error) throw error;
       toast.success("User added! Fetching stats...");
       await refreshUser({ ...form, id: 0 } as User);
-      setForm({ username: "", roll_num: "", leetcode_id: "", class: "" });
+      setForm({ username: "", roll_num: "", leetcode_id: "", class: "G1" });
     } catch (err: any) {
       toast.error("Failed to add user: " + err.message);
     }
@@ -159,10 +157,11 @@ export default function Admin() {
         leetcode_id: r.leetcode_id,
         class: r.class,
         id: 0,
-      }));
-      // Validate bulk upload data
+      })) as User[];
       for (const record of records) {
-        if (!record.roll_num.match(/^25mx(100|[1-2][0-9]{2}|3[0-6][0-9]|370)$/i)) {
+        if (
+          !record.roll_num.match(/^25mx(100|[1-2][0-9]{2}|3[0-6][0-9]|370)$/i)
+        ) {
           throw new Error(`Invalid roll number: ${record.roll_num}`);
         }
         if (record.class && !["G1", "G2"].includes(record.class.toUpperCase())) {
@@ -252,10 +251,7 @@ export default function Admin() {
           <div className="flex items-center gap-4">
             <div className="space-y-2">
               <Label htmlFor="class-filter">Class</Label>
-              <Select
-                value={classFilter}
-                onValueChange={setClassFilter}
-              >
+              <Select value={classFilter} onValueChange={setClassFilter}>
                 <SelectTrigger id="class-filter" className="w-[180px]">
                   <SelectValue placeholder="Select class" />
                 </SelectTrigger>
@@ -307,14 +303,21 @@ export default function Admin() {
                 id="leetcode_id"
                 placeholder="Enter LeetCode ID"
                 value={form.leetcode_id}
-                onChange={(e) => setForm({ ...form, leetcode_id: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, leetcode_id: e.target.value })
+                }
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="class">Class</Label>
               <Select
-                value={form.class}
-                onValueChange={(value) => setForm({ ...form, class: value })}
+                value={form.class || ""}
+                onValueChange={(value) =>
+                  setForm({
+                    ...form,
+                    class: (value as "G1" | "G2") || undefined,
+                  })
+                }
               >
                 <SelectTrigger id="class">
                   <SelectValue placeholder="Select class" />
@@ -392,7 +395,7 @@ export default function Admin() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => deleteUser(u.id, u.leetcode_id)}
+                        onClick={() => deleteUser(u.id, u.leetcode_id || "")}
                       >
                         Delete
                       </Button>

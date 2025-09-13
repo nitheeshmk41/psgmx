@@ -90,7 +90,7 @@ export default function SearchAndFilter({
             <span className="text-sm text-muted-foreground">Active filters:</span>
             {searchTerm && (
               <Badge variant="outline" className="text-xs">
-                Search: "{searchTerm}"
+                Search: {searchTerm}
                 <Button
                   variant="ghost"
                   size="icon"

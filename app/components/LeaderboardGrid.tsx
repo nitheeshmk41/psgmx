@@ -1,9 +1,10 @@
 import LeaderboardCard from "./LeaderboardCard";
+import { User } from "@/lib/refreshUser";
 
 interface LeaderboardGridProps {
-  users: any[];
+  users: User[];
   refreshingIds: number[];
-  refreshUser: (user: any) => void;
+  refreshUser: (user: User) => Promise<User>;
 }
 
 export default function LeaderboardGrid({
