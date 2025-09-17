@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css"; // Updated to use the provided theme.css
+import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -10,13 +10,30 @@ export const metadata: Metadata = {
   title: "PSGMX-Leetboard",
   description: "Track coding progress and compete with peers",
   viewport: "width=device-width, initial-scale=1.0",
+  openGraph: {
+    title: "PSGMX-Leetboard",
+    description: "Track coding progress and compete with peers",
+    url: "https://psgmx.vercel.app/",
+    siteName: "PSGMX-Leetboard",
+    images: [
+      {
+        url: "https://psgmx.vercel.app/opengraph-image.png",
+        width: 1200,
+        height: 630,
+        alt: "PSGMX-Leetboard Preview",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PSGMX-Leetboard",
+    description: "Track coding progress and compete with peers",
+    images: ["https://psgmx.vercel.app/opengraph-image.png"],
+  },
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body
