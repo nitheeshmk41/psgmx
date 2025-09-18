@@ -76,5 +76,5 @@ Some simple areas to start with:
 
 ---
 
-## - From G2 – 25MXians  
+## - From – 25MXians  
 *Let's grow together ✨* 
