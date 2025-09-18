@@ -3,7 +3,16 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { Menu, Moon, Sun, Monitor, Trophy, X, LogOut } from "lucide-react";
+import {
+  Menu,
+  Moon,
+  Sun,
+  Monitor,
+  Trophy,
+  X,
+  LogOut,
+  Github,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +21,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Navbar() {
@@ -24,7 +39,9 @@ export default function Navbar() {
   // Fetch user role
   useEffect(() => {
     const fetchUserRole = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
@@ -87,6 +104,31 @@ export default function Navbar() {
               {item.label}
             </Button>
           ))}
+
+          {/* GitHub Button with Tooltip */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href="https://github.com/nitheeshmk41/psgmx"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative rounded-full p-2 bg-white/20 dark:bg-black/30
+                      hover:shadow-md hover:shadow-primary/40 transition"
+                  >
+                    <Github className="h-5 w-5" />
+                  </Button>
+                </a>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Star this project ⭐</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           {isAdmin && (
             <Button
@@ -172,6 +214,21 @@ export default function Navbar() {
                   {item.label}
                 </Button>
               ))}
+
+              {/* GitHub Button Mobile */}
+              <a
+                href="https://github.com/nitheeshmk41/psgmx"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button
+                  variant="ghost"
+                  className="justify-start flex items-center gap-2 rounded-lg px-3 py-2
+                    hover:bg-white/30 dark:hover:bg-white/10 hover:shadow-md hover:shadow-primary/30"
+                >
+                  <Github className="h-4 w-4" /> GitHub ⭐
+                </Button>
+              </a>
 
               {isAdmin && (
                 <Button

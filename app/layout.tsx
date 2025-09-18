@@ -48,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="flex flex-col min-h-screen">
             <main className="flex-grow">{children}</main>
             <footer className="glass py-4 text-center text-sm text-muted-foreground">
-              © {new Date().getFullYear()} For Mx-ians By G2 Mx-ians. All rights reserved.
+              © {new Date().getFullYear()} 25MXians. All rights reserved.
             </footer>
           </div>
           <Toaster

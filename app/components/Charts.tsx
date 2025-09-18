@@ -40,7 +40,6 @@ export default function DifficultyPie({ users }: DifficultyPieProps) {
             labelLine={false}
             label={({ name, value }) => `${name}: ${value}`}
             outerRadius={100}
-            fill="#8884d8"
             dataKey="value"
           >
             {data.map((entry, index) => (
@@ -52,13 +51,17 @@ export default function DifficultyPie({ users }: DifficultyPieProps) {
           </Pie>
           <Tooltip
             contentStyle={{
-              backgroundColor: "var(--background)",
-              border: "1px solid var(--border)",
+              backgroundColor: "hsl(var(--background))",
+              border: "1px solid hsl(var(--border))",
               borderRadius: "8px",
-              color: "var(--foreground)",
+              color: "hsl(var(--foreground))",
             }}
           />
-          <Legend />
+          <Legend
+            wrapperStyle={{
+              color: "hsl(var(--foreground))",
+            }}
+          />
         </PieChart>
       </ResponsiveContainer>
     </div>
