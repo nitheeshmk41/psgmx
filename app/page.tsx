@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
 import POTDBanner from "./components/POTDBanner";
+import { DisclaimerModal } from "./components/DisclaimerModal"; // Adjust the import path based on your project structure
 
 interface User {
   id: number;
@@ -43,6 +44,7 @@ export default function LeaderboardDashboard() {
   const [filterClass, setFilterClass] = useState<"G1" | "G2" | "ALL">("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [potd, setPotd] = useState<POTD | null>(null);
+  const [showModal, setShowModal] = useState(false);
 
   // Fetch Users
   const fetchUsers = async () => {
@@ -82,6 +84,16 @@ export default function LeaderboardDashboard() {
   useEffect(() => {
     fetchUsers();
     fetchPOTD();
+  }, []);
+
+  useEffect(() => {
+    // Check if the modal has been shown in this session
+    const hasSeenModal = sessionStorage.getItem("hasSeenDisclaimer");
+    if (!hasSeenModal) {
+      setShowModal(true);
+      // Mark the modal as shown for this session
+      sessionStorage.setItem("hasSeenDisclaimer", "true");
+    }
   }, []);
 
   // Filtered Users
@@ -245,6 +257,7 @@ export default function LeaderboardDashboard() {
           <UserGrid />
         </motion.div>
       </div>
+      {showModal && <DisclaimerModal />}
     </motion.div>
   );
 }
