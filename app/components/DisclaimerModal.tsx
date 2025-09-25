@@ -10,48 +10,96 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { AlertTriangle, CheckCircle } from 'lucide-react';
 
 export function DisclaimerModal() {
   const [isOpen, setIsOpen] = React.useState(true);
+  const [agreed, setAgreed] = React.useState(false);
+
+  const handleContinue = () => {
+    if (agreed) {
+      setIsOpen(false);
+    }
+  };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-md sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-gray-900">
-            Platform Guidelines & Disclaimer
+    <Dialog open={isOpen} onOpenChange={() => {}}>
+<DialogContent className="max-w-3xl w-full bg-white dark:bg-gray-900 border-0 shadow-2xl rounded-xl">
+        {/* Header */}
+        <DialogHeader className="text-center space-y-4 pb-2">
+          <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white">
+            Platform Guidelines
           </DialogTitle>
-          <DialogDescription className="text-gray-600">
-            Please read and acknowledge these guidelines to continue using our platform.
+          <DialogDescription className="text-gray-600 dark:text-gray-400">
+            Please review and accept our terms to continue
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4 space-y-4 text-sm text-gray-700">
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="font-semibold text-blue-800 mb-2">Core Guidelines:</h3>
-            <ul className="list-disc list-inside space-y-1">
-              <li>
-                This platform is for <strong>healthy competition</strong>, not aggressive competition.
-              </li>
-              <li>
-                Solve at least <strong>one problem daily</strong> to stay engaged.
-              </li>
+
+        {/* Content */}
+        <div className="space-y-4 py-2">
+          {/* Guidelines */}
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="font-semibold text-blue-800 dark:text-blue-200">Core Rules</h3>
+            </div>
+            <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+              <li>• Maintain healthy, respectful competition</li>
+              <li>• Solve at least one problem daily</li>
+              <li>• Submit only original work</li>
             </ul>
           </div>
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <h3 className="font-semibold text-red-800 mb-2">Strict Policy:</h3>
-            <p className="text-red-700">
-              Don&apos;t use any AI tools. If found by our AI moderators, your account will be removed immediately.
+
+          {/* AI Policy */}
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              <h3 className="font-semibold text-red-800 dark:text-red-200">Strict Policy</h3>
+            </div>
+            <p className="text-sm text-red-700 dark:text-red-300">
+              <strong>No AI tools allowed.</strong> Use of ChatGPT, Claude, or any AI assistant 
+              results in immediate account termination.
             </p>
           </div>
         </div>
-        <DialogFooter>
-          <Button
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => setIsOpen(false)}
-          >
-            I Agree & Continue
-          </Button>
+
+        {/* Agreement */}
+        <div className="py-3 border-t dark:border-gray-700">
+          <label className="flex items-start gap-3 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-2 border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-0"
+            />
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              I understand and agree to all terms and policies listed above
+            </span>
+          </label>
+        </div>
+
+        {/* Footer */}
+        <DialogFooter className="pt-2">
+          <div className="flex gap-3 w-full">
+            <Button
+              variant="outline"
+              className="flex-1 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+              onClick={() => setIsOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleContinue}
+              disabled={!agreed}
+              className={`flex-1 font-medium transition-all ${
+                agreed
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
+                  : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              {agreed ? 'Accept & Continue' : 'Please Accept Terms'}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
