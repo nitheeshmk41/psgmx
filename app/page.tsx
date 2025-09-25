@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion } from "framer-motion";
 import POTDBanner from "./components/POTDBanner";
-import { DisclaimerModal } from "./components/DisclaimerModal"; // Adjust the import path based on your project structure
+import { DisclaimerModal } from "./components/DisclaimerModal";
 
 interface User {
   id: number;
