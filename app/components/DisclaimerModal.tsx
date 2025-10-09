@@ -22,9 +22,16 @@ export function DisclaimerModal() {
     }
   };
 
+  const handleCancel = () => {
+  window.location.replace(
+    'https://www.videomeme.in/wp-content/uploads/2022/10/1666093855111.jpg'
+  );
+};
+
+
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
-<DialogContent className="max-w-3xl w-full bg-white dark:bg-gray-900 border-0 shadow-2xl rounded-xl">
+      <DialogContent className="max-w-3xl w-full bg-white dark:bg-gray-900 border-0 shadow-2xl rounded-xl">
         {/* Header */}
         <DialogHeader className="text-center space-y-4 pb-2">
           <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -41,7 +48,9 @@ export function DisclaimerModal() {
           <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
             <div className="flex items-center gap-2 mb-3">
               <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              <h3 className="font-semibold text-blue-800 dark:text-blue-200">Core Rules</h3>
+              <h3 className="font-semibold text-blue-800 dark:text-blue-200">
+                Core Rules
+              </h3>
             </div>
             <ul className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
               <li>• Maintain healthy, respectful competition</li>
@@ -54,11 +63,13 @@ export function DisclaimerModal() {
           <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
-              <h3 className="font-semibold text-red-800 dark:text-red-200">Strict Policy</h3>
+              <h3 className="font-semibold text-red-800 dark:text-red-200">
+                Strict Policy
+              </h3>
             </div>
             <p className="text-sm text-red-700 dark:text-red-300">
-              <strong>No AI tools allowed.</strong> Use of ChatGPT, Claude, or any AI assistant 
-              results in immediate account termination.
+              <strong>No AI tools allowed.</strong> Use of ChatGPT, Claude, or
+              any AI assistant results in immediate account termination.
             </p>
           </div>
         </div>
@@ -81,13 +92,16 @@ export function DisclaimerModal() {
         {/* Footer */}
         <DialogFooter className="pt-2">
           <div className="flex gap-3 w-full">
+            {/* Cancel button with redirect */}
             <Button
               variant="outline"
               className="flex-1 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
-              onClick={() => setIsOpen(false)}
+              onClick={handleCancel}
             >
               Cancel
             </Button>
+
+            {/* Accept button */}
             <Button
               onClick={handleContinue}
               disabled={!agreed}
