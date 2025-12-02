@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Calendar,
   User,
   Trophy,
@@ -24,16 +30,6 @@ import {
   BookOpen,
   ExternalLink,
 } from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
 
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -59,6 +55,167 @@ interface UserDetailModalProps {
   children?: React.ReactNode;
 }
 
+// Heatmap Component
+const ContributionHeatmap = ({ submissionCalendar }: { submissionCalendar: Record<string, number> }) => {
+  const { weeks, maxCount } = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const oneYearAgo = new Date(today);
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    
+    // Adjust to start from Sunday
+    const startDate = new Date(oneYearAgo);
+    startDate.setDate(startDate.getDate() - startDate.getDay());
+    
+    const weeks: { date: Date; count: number }[][] = [];
+    let currentWeek: { date: Date; count: number }[] = [];
+    let maxCount = 0;
+    
+    const currentDate = new Date(startDate);
+    while (currentDate <= today) {
+      // Create UTC midnight timestamp to match LeetCode's format
+      const utcDate = new Date(Date.UTC(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        currentDate.getDate(),
+        0, 0, 0, 0
+      ));
+      const timestamp = Math.floor(utcDate.getTime() / 1000).toString();
+      const count = submissionCalendar[timestamp] || 0;
+      maxCount = Math.max(maxCount, count);
+      
+      currentWeek.push({ date: new Date(currentDate), count });
+      
+      if (currentDate.getDay() === 6) {
+        weeks.push(currentWeek);
+        currentWeek = [];
+      }
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    if (currentWeek.length > 0) {
+      weeks.push(currentWeek);
+    }
+    
+    return { weeks, maxCount };
+  }, [submissionCalendar]);
+
+  const getColor = (count: number) => {
+    if (count === 0) return "bg-muted/50 dark:bg-muted/30";
+    if (maxCount === 0) return "bg-muted/50 dark:bg-muted/30";
+    
+    const intensity = count / maxCount;
+    if (intensity <= 0.25) return "bg-green-200 dark:bg-green-900";
+    if (intensity <= 0.5) return "bg-green-400 dark:bg-green-700";
+    if (intensity <= 0.75) return "bg-green-500 dark:bg-green-600";
+    return "bg-green-600 dark:bg-green-500";
+  };
+
+  const months = useMemo(() => {
+    const monthLabels: { name: string; index: number }[] = [];
+    let lastMonth = -1;
+    
+    weeks.forEach((week, weekIndex) => {
+      const firstDayOfWeek = week[0]?.date;
+      if (firstDayOfWeek) {
+        const month = firstDayOfWeek.getMonth();
+        if (month !== lastMonth) {
+          monthLabels.push({
+            name: firstDayOfWeek.toLocaleDateString("en-US", { month: "short" }),
+            index: weekIndex,
+          });
+          lastMonth = month;
+        }
+      }
+    });
+    
+    return monthLabels;
+  }, [weeks]);
+
+  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  return (
+    <div className="w-full overflow-x-auto">
+      <div className="min-w-[700px]">
+        {/* Month labels */}
+        <div className="flex mb-1 ml-8">
+          {months.map((month, i) => (
+            <div
+              key={i}
+              className="text-xs text-muted-foreground"
+              style={{ marginLeft: i === 0 ? 0 : `${(month.index - (months[i - 1]?.index || 0)) * 12 - 24}px` }}
+            >
+              {month.name}
+            </div>
+          ))}
+        </div>
+        
+        <div className="flex">
+          {/* Day labels */}
+          <div className="flex flex-col justify-around mr-2 text-xs text-muted-foreground">
+            {dayLabels.filter((_, i) => i % 2 === 1).map((day) => (
+              <span key={day} className="h-[10px] leading-[10px]">{day}</span>
+            ))}
+          </div>
+          
+          {/* Heatmap grid */}
+          <div className="flex gap-[3px]">
+            {weeks.map((week, weekIndex) => (
+              <div key={weekIndex} className="flex flex-col gap-[3px]">
+                {Array.from({ length: 7 }).map((_, dayIndex) => {
+                  const day = week.find((d) => d.date.getDay() === dayIndex);
+                  if (!day) {
+                    return <div key={dayIndex} className="w-[10px] h-[10px]" />;
+                  }
+                  return (
+                    <TooltipProvider key={dayIndex} delayDuration={0}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div
+                            className={cn(
+                              "w-[10px] h-[10px] rounded-[2px] cursor-pointer transition-all hover:ring-1 hover:ring-primary",
+                              getColor(day.count)
+                            )}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">
+                          <p className="font-medium">
+                            {day.count} submission{day.count !== 1 ? "s" : ""} on{" "}
+                            {day.date.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        {/* Legend */}
+        <div className="flex items-center justify-end gap-2 mt-3 text-xs text-muted-foreground">
+          <span>Less</span>
+          <div className="flex gap-[3px]">
+            <div className="w-[10px] h-[10px] rounded-[2px] bg-muted/50 dark:bg-muted/30" />
+            <div className="w-[10px] h-[10px] rounded-[2px] bg-green-200 dark:bg-green-900" />
+            <div className="w-[10px] h-[10px] rounded-[2px] bg-green-400 dark:bg-green-700" />
+            <div className="w-[10px] h-[10px] rounded-[2px] bg-green-500 dark:bg-green-600" />
+            <div className="w-[10px] h-[10px] rounded-[2px] bg-green-600 dark:bg-green-500" />
+          </div>
+          <span>More</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const StatCard = ({ icon: Icon, label, value, className = "" }: any) => (
   <Card
     className={cn(
@@ -82,12 +239,25 @@ const StatCard = ({ icon: Icon, label, value, className = "" }: any) => (
 
 export default function UserDetailModal({ user, children }: UserDetailModalProps) {
   const [data] = useState<User>(user);
+  const [submissionCalendar, setSubmissionCalendar] = useState<Record<string, number>>({});
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-  const DIFFICULTY_COLORS = {
-    Easy: "#22c55e",
-    Medium: "#f59e0b",
-    Hard: "#ef4444",
-  };
+  // Fetch submission calendar when modal opens
+  useEffect(() => {
+    if (isOpen && data.leetcode_id && Object.keys(submissionCalendar).length === 0) {
+      setIsLoadingCalendar(true);
+      fetch(`/api/user/${data.leetcode_id}/calendar`)
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.submissionCalendar) {
+            setSubmissionCalendar(json.submissionCalendar);
+          }
+        })
+        .catch((err) => console.error("Failed to fetch calendar:", err))
+        .finally(() => setIsLoadingCalendar(false));
+    }
+  }, [isOpen, data.leetcode_id, submissionCalendar]);
 
   const solved = {
     easy: data.easy_solved ?? 0,
@@ -103,14 +273,8 @@ export default function UserDetailModal({ user, children }: UserDetailModalProps
       })
     : "Never";
 
-  const barData = [
-    { difficulty: "Easy", solved: solved.easy, color: DIFFICULTY_COLORS.Easy },
-    { difficulty: "Medium", solved: solved.medium, color: DIFFICULTY_COLORS.Medium },
-    { difficulty: "Hard", solved: solved.hard, color: DIFFICULTY_COLORS.Hard },
-  ];
-
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         {children || (
           <Button
@@ -234,37 +398,25 @@ export default function UserDetailModal({ user, children }: UserDetailModalProps
               <StatCard icon={Award} label="Medium" value={solved.medium} className="border-yellow-100 bg-yellow-50/30 dark:bg-yellow-900/30" />
               <StatCard icon={TrendingUp} label="Hard" value={solved.hard} className="border-red-100 bg-red-50/30 dark:bg-red-900/30" />
             </motion.div>
-            {/* Bar Chart */}
+            {/* Contribution Heatmap */}
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
               <Card className="shadow-md border border-border/20 rounded-xl">
                 <CardContent className="p-3 sm:p-4">
                   <h4 className="text-sm sm:text-base font-semibold mb-3 flex items-center gap-1.5 sm:gap-2">
                     <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                    Difficulty Breakdown
+                    Submission Activity
                   </h4>
-                  <div className="h-36 sm:h-40">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={barData} margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                        <XAxis dataKey="difficulty" tick={{ fontSize: 12 }} />
-                        <YAxis tick={{ fontSize: 12 }} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--background))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "var(--radius)",
-                            padding: "6px 10px",
-                            fontSize: "12px",
-                          }}
-                        />
-                        <Bar dataKey="solved" radius={[6, 6, 0, 0]}>
-                          {barData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+                  {isLoadingCalendar ? (
+                    <div className="h-36 sm:h-40 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  ) : Object.keys(submissionCalendar).length > 0 ? (
+                    <ContributionHeatmap submissionCalendar={submissionCalendar} />
+                  ) : (
+                    <div className="h-36 sm:h-40 flex items-center justify-center text-muted-foreground">
+                      No submission data available
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>

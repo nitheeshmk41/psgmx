@@ -93,6 +93,7 @@ export async function GET(
 
     // 5️⃣ Weekly solved: only AC submissions
     let weeklySolved = 0;
+    let submissionCalendar: Record<string, number> = {};
     try {
       const recentAcRes = await fetch("https://leetcode.com/graphql", {
         method: "POST",
@@ -121,6 +122,34 @@ export async function GET(
       ).length;
     } catch (e) {
       console.error("Failed to fetch recent AC submissions:", e);
+    }
+
+    // 5.5️⃣ Fetch submission calendar for heatmap
+    try {
+      const calendarRes = await fetch("https://leetcode.com/graphql", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: `
+            query userProfileCalendar($username: String!) {
+              matchedUser(username: $username) {
+                userCalendar {
+                  submissionCalendar
+                }
+              }
+            }
+          `,
+          variables: { username },
+        }),
+      });
+
+      const calendarJson = await calendarRes.json();
+      const calendarStr = calendarJson?.data?.matchedUser?.userCalendar?.submissionCalendar;
+      if (calendarStr) {
+        submissionCalendar = JSON.parse(calendarStr);
+      }
+    } catch (e) {
+      console.error("Failed to fetch submission calendar:", e);
     }
 
     // 6️⃣ Update Supabase
@@ -159,6 +188,7 @@ export async function GET(
         weeklySolved,
         acceptanceRate: acceptanceRate.toFixed(2) + "%",
         recentLanguages,
+        submissionCalendar,
       },
     });
   } catch (error: any) {
