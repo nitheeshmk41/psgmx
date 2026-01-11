@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
-import { Upload, Loader2, LogOut, UserPlus } from "lucide-react";
+import { Upload, Loader2, LogOut, UserPlus, Home } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -60,7 +60,7 @@ export default function Admin() {
     });
   }, [router]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const { data, error } = await supabase.from("users").select("*");
       if (error) throw error;
@@ -68,15 +68,14 @@ export default function Admin() {
         a.roll_num.localeCompare(b.roll_num)
       ) as User[];
       setUsers(sortedUsers);
-      filterUsers(sortedUsers, classFilter);
     } catch (err: any) {
       toast.error("Failed to fetch users: " + err.message);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   const filterUsers = (users: User[], classFilter: string) => {
     let filtered = users;
@@ -200,15 +199,27 @@ export default function Admin() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-8 max-w-7xl">
+    <div className="min-h-screen bg-muted/30 p-6 md:p-8">
+      <div className="container mx-auto space-y-8 max-w-7xl">
       {/* Header Section */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-        <div className="flex gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+          <h1 className="text-4xl font-black tracking-tighter bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">Admin Dashboard</h1>
+          <p className="text-muted-foreground mt-2">Manage users and track progress statistics</p>
+        </div>
+        <div className="flex flex-wrap gap-3 w-full md:w-auto">
+          <Button
+            onClick={() => router.push("/")}
+            variant="outline"
+            className="flex-1 md:flex-none"
+          >
+            <Home className="mr-2 h-4 w-4" />
+            Home
+          </Button>
           <Button
             onClick={refreshAllUsers}
             disabled={loadingAll}
-            className="w-full sm:w-auto bg-primary hover:bg-primary/90 transition-colors"
+            className="flex-1 md:flex-none bg-primary hover:bg-primary/90 transition-all shadow-md hover:shadow-lg"
           >
             {loadingAll ? (
               <>
@@ -216,7 +227,7 @@ export default function Admin() {
                 Refreshing...
               </>
             ) : (
-              "Refresh All Users"
+              "Refresh All"
             )}
           </Button>
           <Button
@@ -225,7 +236,7 @@ export default function Admin() {
               router.push("/admin");
             }}
             variant="destructive"
-            className="w-full sm:w-auto"
+            className="flex-1 md:flex-none shadow-md hover:shadow-lg transition-all"
           >
             <LogOut className="mr-2 h-4 w-4" />
             Logout
@@ -421,6 +432,7 @@ export default function Admin() {
           </Table>
         </CardContent>
       </Card>
+    </div>
     </div>
   );
 }

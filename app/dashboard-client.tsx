@@ -108,23 +108,23 @@ export default function DashboardClient({ initialUsers, potd }: DashboardClientP
       <Navbar />
       <CursorFollower />
       
-      <main className="container mx-auto px-4 py-8 space-y-8 max-w-7xl pt-24">
+      <main className="container mx-auto px-4 py-6 md:py-8 space-y-6 md:space-y-8 max-w-7xl pt-20 md:pt-24">
         {/* Hero Section / POTD */}
-        <section className="relative flex flex-col items-center justify-center space-y-8 text-center pt-8 pb-8 overflow-hidden rounded-3xl bg-transparent">
+        <section className="relative flex flex-col items-center justify-center space-y-6 md:space-y-8 text-center py-8 md:py-12 overflow-hidden rounded-3xl bg-transparent min-h-[30vh] md:min-h-[40vh]">
           <motion.div
             variants={letterContainer}
             initial="hidden"
             animate="visible"
-            className="relative z-10 space-y-4 px-4"
+            className="relative z-10 space-y-4 px-2 md:px-4"
           >
-            <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-sm font-medium text-primary backdrop-blur-sm mb-4">
+            {/* <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs md:text-sm font-medium text-primary backdrop-blur-sm mb-2 md:mb-4 shadow-sm dark:shadow-none">
                <span className="flex h-2 w-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
                Live Leaderboard
-            </div>
+            </div> */}
 
-            <h1 className="text-5xl md:text-7xl font-black tracking-tighter pb-2 flex flex-wrap justify-center gap-x-3 gap-y-1 relative group cursor-default">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tighter pb-2 flex flex-wrap justify-center gap-x-2 md:gap-x-3 gap-y-1 relative group cursor-default">
               {"PSG MX Leaderboard".split(" ").map((word, i) => (
-                 <span key={i} className="inline-block whitespace-nowrap bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
+                 <span key={i} className="inline-block whitespace-nowrap bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent transform hover:scale-105 transition-transform duration-300">
                    {word.split("").map((char, j) => (
                      <motion.span 
                         key={`${i}-${j}`} 
@@ -140,46 +140,54 @@ export default function DashboardClient({ initialUsers, potd }: DashboardClientP
               ))}
               
               {/* Binocular/Spotlight Effect */}
-               <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-[radial-gradient(circle_at_center,_transparent_0%,_transparent_100px,_rgba(0,0,0,0.1)_150px)] dark:bg-[radial-gradient(circle_at_center,_transparent_0%,_transparent_100px,_rgba(255,255,255,0.05)_150px)] blur-md z-20 mix-blend-overlay w-full h-full animate-spotlight" />
+               <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-[radial-gradient(circle_at_center,_transparent_0%,_transparent_100px,_rgba(0,0,0,0.05)_150px)] dark:bg-[radial-gradient(circle_at_center,_transparent_0%,_transparent_100px,_rgba(255,255,255,0.05)_150px)] blur-md z-20 mix-blend-overlay w-full h-full animate-spotlight" />
             </h1>
             
             <motion.p 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
-              className="text-muted-foreground text-lg md:text-2xl max-w-3xl mx-auto font-light leading-relaxed"
+              className="text-muted-foreground text-base sm:text-lg md:text-2xl max-w-2xl md:max-w-3xl mx-auto font-light leading-relaxed px-4"
             >
               Track your LeetCode progress, compete with peers, and master algorithms.
             </motion.p>
           </motion.div>
 
-          {potd && <div className="relative z-10 w-full max-w-3xl px-4"><POTDBanner potd={potd} /></div>}
+          {potd && <div className="relative z-10 w-full max-w-3xl px-2 md:px-4"><POTDBanner potd={potd} /></div>}
         </section>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatsCard
-            title="Total Students"
-            value={users.length}
-            subtitle="Active coders"
-          />
-          <StatsCard
-            title="Weekly Progress"
-            value={weeklySolved}
-            subtitle="Problems solved this week"
-          />
-          <StatsCard
-            title="Weekly Leader"
-            value={topWeekly?.username || "-"}
-            subtitle={`${topWeekly?.weekly_solved || 0} solved`}
-            isFlip={true}
-          />
-          <StatsCard
-            title="Overall Leader"
-            value={topOverall?.username || "-"}
-            subtitle={`${topOverall?.totalsolved || 0} solved`}
-            isFlip={true}
-          />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="col-span-2 sm:col-span-1">
+            <StatsCard
+              title="Total Students"
+              value={users.length}
+              subtitle="Active coders"
+            />
+          </div>
+          <div className="col-span-2 sm:col-span-1">
+            <StatsCard
+              title="Weekly Progress"
+              value={weeklySolved}
+              subtitle="Problems solved this week"
+            />
+          </div>
+          <div className="col-span-2 sm:col-span-1">
+            <StatsCard
+              title="Weekly Leader"
+              value={topWeekly?.username || "-"}
+              subtitle={`${topWeekly?.weekly_solved || 0} solved`}
+              isFlip={true}
+            />
+          </div>
+          <div className="col-span-2 sm:col-span-1">
+            <StatsCard
+              title="Overall Leader"
+              value={topOverall?.username || "-"}
+              subtitle={`${topOverall?.totalsolved || 0} solved`}
+              isFlip={true}
+            />
+          </div>
         </div>
 
         {/* Group Comparison */}

@@ -27,8 +27,16 @@ export function DisclaimerModal({ open, onOpenChange }: DisclaimerModalProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl w-full bg-white dark:bg-gray-900 border-0 shadow-2xl rounded-xl">
+    <Dialog open={open} onOpenChange={(val) => {
+      if (!val && !agreed) return;
+      onOpenChange(val);
+    }}>
+      <DialogContent 
+        className="max-w-3xl w-full bg-white dark:bg-gray-900 border-0 shadow-2xl rounded-xl"
+        showCloseButton={false}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         {/* Header */}
         <DialogHeader className="text-center space-y-4 pb-2">
           <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-white">
