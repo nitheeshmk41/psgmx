@@ -130,6 +130,7 @@ export default function DashboardClient({ initialUsers, potd }: DashboardClientP
                         key={`${i}-${j}`} 
                         variants={letterChild} 
                         whileHover={{ scale: 1.2, rotate: Math.random() * 10 - 5, color: "var(--primary)" }}
+                        whileTap={{ scale: 1.2, rotate: Math.random() * 10 - 5, color: "var(--primary)" }}
                         transition={{ type: "spring", stiffness: 300 }}
                         className="inline-block cursor-default"
                      >
@@ -140,7 +141,7 @@ export default function DashboardClient({ initialUsers, potd }: DashboardClientP
               ))}
               
               {/* Binocular/Spotlight Effect */}
-               <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700 bg-[radial-gradient(circle_at_center,_transparent_0%,_transparent_100px,_rgba(0,0,0,0.05)_150px)] dark:bg-[radial-gradient(circle_at_center,_transparent_0%,_transparent_100px,_rgba(255,255,255,0.05)_150px)] blur-md z-20 mix-blend-overlay w-full h-full animate-spotlight" />
+               <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity duration-700 bg-[radial-gradient(circle_at_center,_transparent_0%,_transparent_100px,_rgba(0,0,0,0.05)_150px)] dark:bg-[radial-gradient(circle_at_center,_transparent_0%,_transparent_100px,_rgba(255,255,255,0.05)_150px)] blur-md z-20 mix-blend-overlay w-full h-full animate-spotlight" />
             </h1>
             
             <motion.p 
