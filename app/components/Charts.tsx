@@ -8,8 +8,10 @@ import {
   Legend,
 } from "recharts";
 
+import { User } from "@/app/types";
+
 interface DifficultyPieProps {
-  users: any[];
+  users: User[];
 }
 
 export default function DifficultyPie({ users }: DifficultyPieProps) {

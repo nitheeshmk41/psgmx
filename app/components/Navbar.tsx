@@ -7,26 +7,14 @@ import {
   Menu,
   Moon,
   Sun,
-  Monitor,
   Trophy,
   X,
   LogOut,
   Github,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Navbar() {
@@ -34,6 +22,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [stars, setStars] = useState<number | null>(null);
   const { theme, setTheme } = useTheme();
 
   // Fetch user role
@@ -52,6 +41,12 @@ export default function Navbar() {
       }
     };
     fetchUserRole();
+    
+    // Fetch GitHub Stars
+    fetch("https://api.github.com/repos/nitheeshmk41/psgmx")
+      .then(res => res.json())
+      .then(data => setStars(data.stargazers_count))
+      .catch(err => console.error("Error fetching stars:", err));
   }, []);
 
   const handleLogout = async () => {
@@ -60,212 +55,125 @@ export default function Navbar() {
   };
 
   const navItems = [
-    { label: "Leaderboard", path: "/", icon: Trophy },
+    { label: "Home", path: "/", icon: Trophy },
     { label: "Admin", path: "/admin" },
   ];
 
   return (
     <motion.nav
-      initial={{ y: -40, opacity: 0 }}
+      initial={{ y: -100, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className="sticky top-0 z-50 border-b border-white/10 shadow-lg 
-      bg-white/10 dark:bg-black/20 backdrop-blur-xl"
+      transition={{ duration: 0.5, type: "spring", stiffness: 100 }}
+      className="fixed top-6 inset-x-0 z-50 flex justify-center pointer-events-none"
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between py-3 px-4 sm:px-6 lg:px-8">
-        {/* Brand */}
-        <motion.div
-          onClick={() => router.push("/")}
-          whileHover={{ scale: 1.05 }}
-          className="flex items-center space-x-2 cursor-pointer group"
+      <div className="pointer-events-auto flex items-center gap-2 p-1.5 rounded-full border border-zinc-200 dark:border-white/10 bg-white/70 dark:bg-black/40 backdrop-blur-2xl shadow-xl shadow-zinc-200/50 dark:shadow-black/20 ring-1 ring-black/5 dark:ring-white/10">
+        
+        {/* Brand Icon */}
+        <div 
+           onClick={() => router.push("/")}
+           className="relative h-10 w-10 overflow-hidden rounded-full cursor-pointer hover:scale-105 transition-transform border border-zinc-200 dark:border-white/20 shadow-sm"
         >
-          <h1 className="text-xl font-bold tracking-tight text-foreground relative">
-            MXians LeetBoard
-            {/* Glow effect */}
-            <span className="absolute inset-0 blur-xl opacity-30 group-hover:opacity-60 group-hover:text-primary transition" />
-          </h1>
-        </motion.div>
+             <Image 
+               src="/psg_logo.jpeg" 
+               alt="PSG Logo" 
+               fill
+               className="object-cover"
+             />
+        </div>
+
+        {/* Separator */}
+        <div className="h-6 w-px bg-zinc-200 dark:bg-white/10 mx-1 hidden md:block" />
 
         {/* Desktop Menu */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-1">
           {navItems.map((item) => (
             <Button
               key={item.label}
               variant="ghost"
               onClick={() => router.push(item.path)}
-              className={`relative font-medium px-4 py-2 rounded-xl transition-all duration-300 
-                hover:bg-white/20 dark:hover:bg-white/10 hover:shadow-md hover:shadow-primary/30
+              className={`relative rounded-full px-5 py-2 font-medium text-sm transition-all duration-300
                 ${
                   pathname === item.path
-                    ? "text-primary bg-white/20 shadow-inner"
-                    : "text-muted-foreground"
+                    ? "text-primary bg-zinc-100 dark:bg-white/10 shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-zinc-100/50 dark:hover:bg-white/5"
                 }`}
             >
               {item.label}
             </Button>
           ))}
-
-          {/* GitHub Button with Tooltip */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <a
-                  href="https://github.com/nitheeshmk41/psgmx"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative rounded-full p-2 bg-white/20 dark:bg-black/30
-                      hover:shadow-md hover:shadow-primary/40 transition"
-                  >
-                    <Github className="h-5 w-5" />
-                  </Button>
-                </a>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Star this project ⭐</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          {isAdmin && (
-            <Button
-              onClick={handleLogout}
-              variant="destructive"
-              size="sm"
-              className="flex items-center gap-1 font-medium rounded-xl shadow-lg hover:shadow-red-500/40"
-            >
-              <LogOut className="h-4 w-4" /> Logout
-            </Button>
-          )}
-
-          {/* Theme Switcher */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative rounded-full p-2 bg-white/20 dark:bg-black/30
-                  hover:shadow-md hover:shadow-primary/40 transition"
-              >
-                <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-40 rounded-xl border border-white/20 bg-white/20 dark:bg-black/30 backdrop-blur-xl shadow-lg"
-            >
-              <DropdownMenuItem onClick={() => setTheme("light")}>
-                <Sun className="mr-2 h-4 w-4" /> Light
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")}>
-                <Moon className="mr-2 h-4 w-4" /> Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("system")}>
-                <Monitor className="mr-2 h-4 w-4" /> System
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
 
-        {/* Mobile Menu Button */}
-        <div className="md:hidden">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="rounded-full p-2 bg-white/20 dark:bg-black/30 hover:shadow-md hover:shadow-primary/40 transition"
+        {/* Right Actions */}
+        <div className="flex items-center gap-2 ml-1">
+           {/* GitHub Star */}
+           <a
+            href="https://github.com/nitheeshmk41/psgmx"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-zinc-50 dark:bg-white/5 hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors border border-zinc-200 dark:border-white/10 group"
           >
-            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </Button>
+            <Github className="h-4 w-4 group-hover:text-primary transition-colors" />
+            {stars !== null && (
+               <span className="text-xs font-semibold font-mono">{stars}</span>
+            )}
+          </a>
+
+           {/* Theme Toggle */}
+           <div 
+             className="relative h-9 w-9 flex items-center justify-center rounded-full cursor-pointer hover:bg-zinc-100 dark:hover:bg-white/10 transition-all border border-transparent hover:border-zinc-200 dark:hover:border-white/10"
+             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+           >
+              <Sun className="absolute h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 text-amber-400" />
+              <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100 text-indigo-400" />
+           </div>
+
+          {isAdmin && (
+             <Button
+                onClick={handleLogout}
+                size="icon"
+                variant="ghost" 
+                className="rounded-full h-9 w-9 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+             >
+                <LogOut className="h-4 w-4" />
+             </Button>
+          )}
+          
+          {/* Mobile Toggle */}
+          <div className="md:hidden ml-1">
+             <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="rounded-full h-9 w-9 hover:bg-white/10"
+            >
+              {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      <AnimatePresence>
+      {/* Mobile Menu Dropdown */}
+       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            transition={{ duration: 0.25 }}
-            className="md:hidden border-t border-white/10 bg-white/20 dark:bg-black/30 backdrop-blur-2xl shadow-lg rounded-b-xl"
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 10, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            className="absolute top-full mt-2 p-2 rounded-2xl bg-white/90 dark:bg-zinc-900/90 backdrop-blur-3xl border border-zinc-200 dark:border-white/20 shadow-2xl min-w-[200px] flex flex-col gap-1 pointer-events-auto"
           >
-            <div className="px-4 py-4 flex flex-col gap-3">
-              {navItems.map((item) => (
+             {navItems.map((item) => (
                 <Button
                   key={item.label}
                   variant="ghost"
                   onClick={() => {
-                    router.push(item.path);
-                    setIsMobileMenuOpen(false);
+                     router.push(item.path);
+                     setIsMobileMenuOpen(false);
                   }}
-                  className={`justify-start font-medium rounded-lg px-3 py-2 transition-all duration-300
-                    hover:bg-white/30 dark:hover:bg-white/10 hover:shadow-md hover:shadow-primary/30
-                    ${
-                      pathname === item.path
-                        ? "text-primary bg-white/30 shadow-inner"
-                        : "text-muted-foreground"
-                    }`}
+                  className="justify-start rounded-xl w-full"
                 >
-                  {item.label}
+                   {item.label}
                 </Button>
-              ))}
-
-              {/* GitHub Button Mobile */}
-              <a
-                href="https://github.com/nitheeshmk41/psgmx"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button
-                  variant="ghost"
-                  className="justify-start flex items-center gap-2 rounded-lg px-3 py-2
-                    hover:bg-white/30 dark:hover:bg-white/10 hover:shadow-md hover:shadow-primary/30"
-                >
-                  <Github className="h-4 w-4" /> GitHub ⭐
-                </Button>
-              </a>
-
-              {isAdmin && (
-                <Button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  variant="destructive"
-                  className="justify-start flex items-center gap-2 rounded-lg shadow-lg hover:shadow-red-500/40"
-                >
-                  <LogOut className="h-4 w-4" /> Logout
-                </Button>
-              )}
-
-              {/* Theme Switcher */}
-              <div className="flex flex-col gap-2 pt-4 border-t border-white/10">
-                <span className="text-sm text-muted-foreground font-medium">Theme</span>
-                <div className="grid grid-cols-3 gap-2">
-                  {["light", "dark", "system"].map((mode) => (
-                    <Button
-                      key={mode}
-                      variant="outline"
-                      onClick={() => setTheme(mode)}
-                      className={`flex items-center justify-center rounded-lg backdrop-blur-md
-                        bg-white/20 dark:bg-black/20 border border-white/20
-                        hover:shadow-md hover:shadow-primary/30 transition
-                        ${theme === mode ? "border-primary text-primary" : ""}`}
-                    >
-                      {mode === "light" && <Sun className="h-4 w-4 mr-1" />}
-                      {mode === "dark" && <Moon className="h-4 w-4 mr-1" />}
-                      {mode === "system" && <Monitor className="h-4 w-4 mr-1" />}
-                      {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
+             ))}
           </motion.div>
         )}
       </AnimatePresence>

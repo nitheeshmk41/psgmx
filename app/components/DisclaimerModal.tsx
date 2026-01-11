@@ -12,25 +12,22 @@ import {
 } from '@/components/ui/dialog';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 
-export function DisclaimerModal() {
-  const [isOpen, setIsOpen] = React.useState(true);
+interface DisclaimerModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function DisclaimerModal({ open, onOpenChange }: DisclaimerModalProps) {
   const [agreed, setAgreed] = React.useState(false);
 
   const handleContinue = () => {
     if (agreed) {
-      setIsOpen(false);
+      onOpenChange(false);
     }
   };
 
-  const handleCancel = () => {
-  window.location.replace(
-    'https://www.videomeme.in/wp-content/uploads/2022/10/1666093855111.jpg'
-  );
-};
-
-
   return (
-    <Dialog open={isOpen} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl w-full bg-white dark:bg-gray-900 border-0 shadow-2xl rounded-xl">
         {/* Header */}
         <DialogHeader className="text-center space-y-4 pb-2">
@@ -91,21 +88,12 @@ export function DisclaimerModal() {
 
         {/* Footer */}
         <DialogFooter className="pt-2">
-          <div className="flex gap-3 w-full">
-            {/* Cancel button with redirect */}
-            <Button
-              variant="outline"
-              className="flex-1 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
-              onClick={handleCancel}
-            >
-              Cancel
-            </Button>
-
+          <div className="flex gap-3 w-full justify-center">
             {/* Accept button */}
             <Button
               onClick={handleContinue}
               disabled={!agreed}
-              className={`flex-1 font-medium transition-all ${
+              className={`w-full font-medium transition-all ${
                 agreed
                   ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white'
                   : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'

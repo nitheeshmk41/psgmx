@@ -4,6 +4,13 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --animate-spotlight: spotlight 4s ease-in-out infinite alternate;
+  
+  @keyframes spotlight {
+    0% { transform: translateX(-50%) skewX(-10deg); }
+    100% { transform: translateX(50%) skewX(10deg); }
+  }
+  
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);

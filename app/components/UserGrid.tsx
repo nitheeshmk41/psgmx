@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Trophy, Code2, RefreshCw, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -16,65 +16,26 @@ import {
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "sonner";
 import UserDetailModal from "./UserDetailModal";
 import SearchAndFilter from "./SearchAndFilter";
-import { Skeleton } from "@/components/ui/skeleton";
-import Navbar from "./Navbar";
-import { supabase } from "@/lib/supabaseClient";
+import { User } from "@/app/types";
 
-interface User {
-  id: number;
-  username: string;
-  roll_num: string;
-  class: "G1" | "G2";
-  totalsolved: number;
-  weekly_solved: number;
-  leetcode_id?: string;
-  profileimg?: string;
-  last_active?: string;
-  weeklyRank?: number;
-  overallRank?: number;
+interface UserGridProps {
+  users: User[];
+  onRefresh: (user: User) => Promise<void>;
+  refreshingIds: number[];
 }
 
 const USERS_PER_PAGE = 12;
 
-export default function UserGrid() {
-  const [users, setUsers] = useState<User[]>([]);
+export default function UserGrid({ users, onRefresh, refreshingIds }: UserGridProps) {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshingIds, setRefreshingIds] = useState<number[]>([]);
   const [filterClass, setFilterClass] = useState<"G1" | "G2" | "ALL">("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [rankType, setRankType] = useState<"weekly" | "overall">("weekly");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from("users").select("*");
-    if (error) toast.error("Failed to fetch users");
-    else setUsers(data || []);
-    setLoading(false);
-  };
-
-  const refreshUser = async (user: User) => {
-    if (!user.leetcode_id) return;
-    setRefreshingIds((prev) => [...prev, user.id]);
-    try {
-      await fetch(`/api/user/${user.leetcode_id}`);
-      await fetchUsers();
-      toast.success(`${user.username}'s data refreshed successfully`);
-    } catch {
-      toast.error(`Failed to refresh ${user.username}'s data`);
-    } finally {
-      setRefreshingIds((prev) => prev.filter((id) => id !== user.id));
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
+  // Filter users when props or filter state changes
   useEffect(() => {
     const matches = users.filter((user) => {
       const matchesClass = filterClass === "ALL" || user.class === filterClass;
@@ -87,20 +48,31 @@ export default function UserGrid() {
     setCurrentPage(1);
   }, [users, filterClass, searchTerm]);
 
-  const usersWithRanks = computeRanks(filteredUsers);
+  // Compute ranks for display
+  const usersWithRanks = useMemo(() => computeRanks(filteredUsers), [filteredUsers]);
 
-  const top3Weekly = [...usersWithRanks]
-    .sort((a, b) => (a.weeklyRank ?? Infinity) - (b.weeklyRank ?? Infinity))
-    .slice(0, 3);
-  const top3Overall = [...usersWithRanks]
-    .sort((a, b) => (a.overallRank ?? Infinity) - (b.overallRank ?? Infinity))
-    .slice(0, 3);
+  // Top lists based on filtered data
+  const top3Weekly = useMemo(() => {
+    return [...usersWithRanks]
+      .sort((a, b) => (a.weeklyRank ?? Infinity) - (b.weeklyRank ?? Infinity))
+      .slice(0, 3);
+  }, [usersWithRanks]);
 
-  const sortedUsers = [...usersWithRanks].sort((a, b) =>
-    rankType === "weekly"
-      ? (a.weeklyRank ?? Infinity) - (b.weeklyRank ?? Infinity)
-      : (a.overallRank ?? Infinity) - (b.overallRank ?? Infinity)
-  );
+  const isSearching = searchTerm.trim() !== "";
+
+  const sortedUsers = useMemo(() => {
+    let sorted = [...usersWithRanks].sort((a, b) =>
+      rankType === "weekly"
+        ? (a.weeklyRank ?? Infinity) - (b.weeklyRank ?? Infinity)
+        : (a.overallRank ?? Infinity) - (b.overallRank ?? Infinity)
+    );
+
+    if (rankType === "weekly" && !isSearching) {
+       const top3Ids = new Set(top3Weekly.map(u => u.id));
+       sorted = sorted.filter(u => !top3Ids.has(u.id));
+    }
+    return sorted;
+  }, [usersWithRanks, rankType, isSearching, top3Weekly]);
 
   const totalPages = Math.ceil(sortedUsers.length / USERS_PER_PAGE);
   const paginatedUsers = sortedUsers.slice(
@@ -115,18 +87,6 @@ export default function UserGrid() {
   const onPrevPage = () => currentPage > 1 && setCurrentPage(currentPage - 1);
   const canGoNext = currentPage < totalPages;
   const canGoPrev = currentPage > 1;
-  const isSearching = searchTerm.trim() !== "";
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-          <SkeletonGrid />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -143,16 +103,6 @@ export default function UserGrid() {
           <Leaderboard
             title="Top 3 Weekly Leaders"
             users={top3Weekly}
-            type="weekly"
-            refreshUser={refreshUser}
-            refreshingIds={refreshingIds}
-          />
-          <Leaderboard
-            title="Top 3 Overall Leaders"
-            users={top3Overall}
-            type="overall"
-            refreshUser={refreshUser}
-            refreshingIds={refreshingIds}
           />
         </>
       )}
@@ -169,23 +119,21 @@ export default function UserGrid() {
         </Tabs>
       </div>
 
-{/* User Grid */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-  {paginatedUsers.map((user) => (
-    <UserDetailModal key={user.id} user={user}>
-      <div className="cursor-pointer">
-        <UserCard
-          user={user}
-          refreshUser={refreshUser}
-          refreshingIds={refreshingIds}
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {paginatedUsers.map((user) => (
+          <UserDetailModal key={user.id} user={user}>
+            <div className="cursor-pointer h-full">
+              <UserCard
+                user={user}
+                refreshUser={onRefresh}
+                refreshingIds={refreshingIds}
+                rankType={rankType}
+              />
+            </div>
+          </UserDetailModal>
+        ))}
       </div>
-    </UserDetailModal>
-  ))}
-</div>
 
-
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center">
           <Pagination>
@@ -213,40 +161,40 @@ function UserCard({
   user,
   refreshUser,
   refreshingIds,
+  rankType,
 }: {
   user: User;
-  refreshUser: (user: User) => void;
+  refreshUser: (user: User) => Promise<void>;
   refreshingIds: number[];
+  rankType: "weekly" | "overall";
 }) {
+  const isTop3Overall = rankType === "overall" && (user.overallRank || 999) <= 3;
+  
   return (
-    <Card className="group relative cursor-pointer hover:shadow-lg transition-all duration-300">
-      <CardHeader className="flex justify-between items-center">
-        
-        <div className="flex items-center gap-3">
-          <Avatar className="w-12 h-12">
-            
-            <AvatarImage src={user.profileimg || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} alt={user.username} />
-            <AvatarFallback>{user.username[0]}</AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-semibold">{user.username}</p>
-            <p className="text-xs text-muted-foreground">{user.roll_num}</p>
-          </div>
+    <Card className={cn(
+        "group relative h-full flex flex-col hover:shadow-lg transition-all duration-300",
+        isTop3Overall && "border-yellow-500/50 bg-yellow-500/5 dark:bg-yellow-500/10 shadow-yellow-500/10"
+    )}>
+       <div className="absolute top-2 right-2 flex gap-1 z-10">
+         <span className={cn(
+             "text-xs font-bold px-2 py-0.5 rounded-full",
+             isTop3Overall ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400" : "bg-primary/10 text-primary"
+         )}>
+            #{rankType === "weekly" ? user.weeklyRank : user.overallRank}
+         </span>
+       </div>
+      <CardHeader className="flex flex-row items-center gap-3 pb-2 pt-4">
+        <Avatar className="w-12 h-12 border border-border">
+          <AvatarImage src={user.profileimg || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} alt={user.username} />
+          <AvatarFallback>{user.username[0]}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold truncate pr-6">{user.username}</p>
+          <p className="text-xs text-muted-foreground">{user.roll_num}</p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={(e) => {
-            e.stopPropagation();
-            refreshUser(user);
-          }}
-          disabled={refreshingIds.includes(user.id)}
-        >
-          <RefreshCw className={cn("h-4 w-4", refreshingIds.includes(user.id) && "animate-spin")} />
-        </Button>
       </CardHeader>
-      <CardContent>
-        <div className="flex justify-between items-center">
+      <CardContent className="mt-auto pt-2">
+        <div className="flex justify-between items-center mb-3">
           <div className="flex items-center gap-2">
             <Trophy className="h-4 w-4 text-yellow-500" />
             <span className="text-sm font-medium">{user.totalsolved}</span>
@@ -258,6 +206,19 @@ function UserCard({
             <span className="text-xs text-muted-foreground">Week</span>
           </div>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full text-xs h-8"
+          onClick={(e) => {
+            e.stopPropagation();
+            refreshUser(user);
+          }}
+          disabled={refreshingIds.includes(user.id)}
+        >
+          <RefreshCw className={cn("h-3 w-3 mr-2", refreshingIds.includes(user.id) && "animate-spin")} />
+          Refresh Stats
+        </Button>
       </CardContent>
     </Card>
   );
@@ -266,64 +227,55 @@ function UserCard({
 function Leaderboard({
   title,
   users,
-  type,
-  refreshUser,
-  refreshingIds,
 }: {
   title: string;
   users: User[];
-  type: "weekly" | "overall";
-  refreshUser: (user: User) => void;
-  refreshingIds: number[];
 }) {
   return (
     <div>
-      <h3 className="text-xl font-bold tracking-tight mb-4">{title}</h3>
+      <h3 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
+        <Trophy className="h-5 w-5 text-yellow-500" />
+        {title}
+      </h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {users.map((user) => (
+        {users.map((user, idx) => (
           <UserDetailModal key={user.id} user={user}>
-            <Card className="group relative cursor-pointer hover:shadow-lg transition-all duration-300 border-2 border-yellow-400/30">
-              <CardHeader className="flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage src={user.profileimg || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} alt={user.username} />
-                      <AvatarFallback>{user.username[0]}</AvatarFallback>
-                    </Avatar>
-                    <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-yellow-400 text-white text-xs font-bold flex items-center justify-center">
-                      {type === "weekly" ? user.weeklyRank : user.overallRank}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="font-semibold">{user.username}</p>
+             <Card 
+               className={cn(
+                 "group relative cursor-pointer hover:shadow-lg transition-all duration-300 border-2",
+                 idx === 0 ? "border-yellow-400/50 bg-yellow-400/5" : 
+                 idx === 1 ? "border-gray-400/50 bg-gray-400/5" : 
+                 "border-amber-600/50 bg-amber-600/5"
+               )}
+             >
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                  {idx === 0 && <Award className="w-8 h-8 text-yellow-500 fill-yellow-500" />}
+                  {idx === 1 && <Award className="w-7 h-7 text-gray-400 fill-gray-400" />}
+                  {idx === 2 && <Award className="w-6 h-6 text-amber-600 fill-amber-600" />}
+              </div>
+
+              <CardHeader className="flex flex-col items-center pb-2 pt-6 text-center">
+                  <Avatar className="w-16 h-16 border-2 border-background shadow-sm">
+                    <AvatarImage src={user.profileimg || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`} alt={user.username} />
+                    <AvatarFallback>{user.username[0]}</AvatarFallback>
+                  </Avatar>
+                  <div className="mt-2">
+                    <p className="font-semibold text-lg">{user.username}</p>
                     <p className="text-xs text-muted-foreground">{user.roll_num}</p>
                   </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    refreshUser(user);
-                  }}
-                  disabled={refreshingIds.includes(user.id)}
-                >
-                  <RefreshCw className={cn("h-4 w-4", refreshingIds.includes(user.id) && "animate-spin")} />
-                </Button>
               </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <Trophy className="h-4 w-4 text-yellow-500" />
-                    <span className="text-sm font-medium">{user.totalsolved}</span>
-                    <span className="text-xs text-muted-foreground">Total</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Code2 className="h-4 w-4 text-green-500" />
-                    <span className="text-sm font-medium">{user.weekly_solved}</span>
-                    <span className="text-xs text-muted-foreground">Week</span>
-                  </div>
-                </div>
+              <CardContent className="text-center pb-4">
+                 <div className="flex justify-center gap-4 text-sm">
+                     <div className="flex flex-col">
+                        <span className="font-bold text-lg">{user.weekly_solved}</span>
+                        <span className="text-xs text-muted-foreground">Weekly</span>
+                     </div>
+                     <div className="w-px bg-border/50" />
+                     <div className="flex flex-col">
+                        <span className="font-bold text-lg">{user.totalsolved}</span>
+                        <span className="text-xs text-muted-foreground">Total</span>
+                     </div>
+                 </div>
               </CardContent>
             </Card>
           </UserDetailModal>
@@ -373,22 +325,6 @@ function renderPaginationItems(totalPages: number, currentPage: number, onPageCh
   return items;
 }
 
-function SkeletonGrid() {
-  return (
-    <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl bg-muted" />)}
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-40 w-full rounded-xl bg-muted" />)}
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {[...Array(12)].map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-xl bg-muted" />)}
-      </div>
-    </>
-  );
-}
-
 function NoUsers() {
   return (
     <div className="text-center py-12">
@@ -401,23 +337,47 @@ function NoUsers() {
   );
 }
 
-// ---------------- Ranking Logic ----------------
-
 function computeRanks(users: User[]) {
   const cloned = users.map((u) => ({ ...u }));
-  cloned.sort((a, b) => (b.weekly_solved || 0) - (a.weekly_solved || 0));
+  
+  // Weekly Rank -> Overall Solved -> Roll Number (Last 3 digits reversed logic?? No, lower is better usually for rank? Or lexicographical?)
+  // Logic: "25mx201 is 1st rank, 336 is 2nd rank" => Lower string value is better rank.
+  cloned.sort((a, b) => {
+      // 1. Weekly Solved (Desc)
+      if ((b.weekly_solved || 0) !== (a.weekly_solved || 0)) {
+          return (b.weekly_solved || 0) - (a.weekly_solved || 0);
+      }
+      // 2. Overall Solved (Desc)
+      if ((b.totalsolved || 0) !== (a.totalsolved || 0)) {
+          return (b.totalsolved || 0) - (a.totalsolved || 0);
+      }
+      // 3. Roll Number (Asc) - Lexicographical comparison for strings ("25mx201" < "25mx336")
+      return a.roll_num.localeCompare(b.roll_num);
+  });
+  
   cloned.forEach((user, idx) => {
-    if (idx > 0 && user.weekly_solved === cloned[idx - 1].weekly_solved) {
-      user.weeklyRank = cloned[idx - 1].weeklyRank;
-    } else user.weeklyRank = idx + 1;
+    // Handle ties
+    // A tie only occurs if ALL sorting criteria are identical. 
+    // Since Roll Number is unique (usually), there shouldn't be shared ranks unless duplicate roll numbers exists or logic differs.
+    // If the user wants strictly same rank for same score, we ignore roll number for *ranking* number but use it for *ordering*.
+    // But the request implies ordering: "25mx201 is 1st rank, 336 is 2nd rank."
+    // This implies they get DIFFERENT ranks (1 and 2).
+    
+    // So simpler: just rank by index + 1.
+    user.weeklyRank = idx + 1;
   });
 
-  cloned.sort((a, b) => (b.totalsolved || 0) - (a.totalsolved || 0));
-  cloned.forEach((user, idx) => {
-    if (idx > 0 && user.totalsolved === cloned[idx - 1].totalsolved) {
-      user.overallRank = cloned[idx - 1].overallRank;
-    } else user.overallRank = idx + 1;
+  // Overall Rank Logic (just for reference if needed, usually total solved is primary)
+  const overallSorted = [...cloned].sort((a, b) => (b.totalsolved || 0) - (a.totalsolved || 0));
+  
+  overallSorted.forEach((user, idx) => {
+      // Simple ranking for overall too
+      if (idx > 0 && user.totalsolved === overallSorted[idx - 1].totalsolved) {
+           user.overallRank = overallSorted[idx - 1].overallRank;
+      } else {
+           user.overallRank = idx + 1;
+      }
   });
 
-  return cloned;
+  return cloned; 
 }
