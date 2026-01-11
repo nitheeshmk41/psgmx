@@ -56,7 +56,7 @@ Real-time stats, dynamic leaderboards, and detailed analytics for LeetCode progr
 
 ---
 
-## IV. 🤝 Contribution Guide
+## 🤝 Contribution Guide
 
 We welcome contributions to make this platform even better!
 
