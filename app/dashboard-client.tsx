@@ -10,22 +10,27 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import POTDBanner from "./components/POTDBanner";
 import { DisclaimerModal } from "./components/DisclaimerModal";
-import { User, POTD } from "@/app/types";
+import { AcademicClass, User, POTD } from "@/app/types";
 import { Button } from "@/components/ui/button";
+import { resolveUserBatch, resolveUserGroup } from "@/lib/academics/resolve";
+import { Badge } from "@/components/ui/badge";
 
 import CursorFollower from "./components/ui/cursor-follower";
 
 interface DashboardClientProps {
   initialUsers: User[];
   potd: POTD | null;
+  structure: AcademicClass[];
 }
 
-export default function DashboardClient({ initialUsers, potd }: DashboardClientProps) {
+export default function DashboardClient({ initialUsers, potd, structure }: DashboardClientProps) {
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [refreshingIds, setRefreshingIds] = useState<number[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [isChartVisible, setIsChartVisible] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [selectedClassCode, setSelectedClassCode] = useState<string>("ALL");
+  const [selectedGroupName, setSelectedGroupName] = useState<string>("ALL");
 
   // Sync state if props change (e.g. server revalidation)
   useEffect(() => {
@@ -68,23 +73,51 @@ export default function DashboardClient({ initialUsers, potd }: DashboardClientP
   }, []);
 
   // Compute Stats
-  const weeklySolved = users.reduce((acc, user) => acc + (user.weekly_solved || 0), 0);
-  
-  const topWeekly = [...users].sort((a, b) => (b.weekly_solved || 0) - (a.weekly_solved || 0))[0];
-  const topOverall = [...users].sort((a, b) => (b.totalsolved || 0) - (a.totalsolved || 0))[0];
-  
-  // Group Stats
-  const g1Users = users.filter((u) => u.class === "G1");
-  const g2Users = users.filter((u) => u.class === "G2");
+  const activeClasses = structure.filter((item) => item.isActive);
 
-  const g1Weekly = g1Users.reduce((a, b) => a + (b.weekly_solved || 0), 0);
-  const g2Weekly = g2Users.reduce((a, b) => a + (b.weekly_solved || 0), 0);
-  
-  const g1TopWeekly = [...g1Users].sort((a, b) => (b.weekly_solved || 0) - (a.weekly_solved || 0))[0];
-  const g2TopWeekly = [...g2Users].sort((a, b) => (b.weekly_solved || 0) - (a.weekly_solved || 0))[0];
+  const normalized = (value?: string | null) => (value || "").trim().toUpperCase();
 
-  const g1TopOverall = [...g1Users].sort((a, b) => (b.totalsolved || 0) - (a.totalsolved || 0))[0];
-  const g2TopOverall = [...g2Users].sort((a, b) => (b.totalsolved || 0) - (a.totalsolved || 0))[0];
+  const selectedClass = activeClasses.find((item) => normalized(item.code) === normalized(selectedClassCode));
+
+  const availableGroups = selectedClass
+    ? selectedClass.groups.filter((group) => group.isActive)
+    : [];
+
+  const scopedUsers = users.filter((user) => {
+    const userBatch = normalized(resolveUserBatch(user));
+    const userGroup = normalized(resolveUserGroup(user));
+
+    const classOk = selectedClassCode === "ALL" || userBatch === normalized(selectedClassCode);
+    const groupOk = selectedGroupName === "ALL" || userGroup === normalized(selectedGroupName);
+
+    return classOk && groupOk;
+  });
+
+  const weeklySolved = scopedUsers.reduce((acc, user) => acc + (user.weekly_solved || 0), 0);
+  
+  const topWeekly = [...scopedUsers].sort((a, b) => (b.weekly_solved || 0) - (a.weekly_solved || 0))[0];
+  const topOverall = [...scopedUsers].sort((a, b) => (b.totalsolved || 0) - (a.totalsolved || 0))[0];
+  
+  const groupNamesForStats = selectedClass
+    ? availableGroups.map((group) => group.name)
+    : Array.from(new Set(scopedUsers.map((user) => resolveUserGroup(user)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+
+  const groupStats = groupNamesForStats.map((groupName) => {
+    const members = scopedUsers.filter((user) => normalized(resolveUserGroup(user)) === normalized(groupName));
+    const weeklyProgress = members.reduce((sum, user) => sum + (user.weekly_solved || 0), 0);
+    const weeklyTop = [...members].sort((a, b) => (b.weekly_solved || 0) - (a.weekly_solved || 0))[0];
+    const overallTop = [...members].sort((a, b) => (b.totalsolved || 0) - (a.totalsolved || 0))[0];
+
+    return {
+      groupName,
+      members: members.length,
+      weeklyProgress,
+      weeklyTop: weeklyTop?.username || "-",
+      overallTop: overallTop?.username || "-",
+    };
+  });
+
+  const groupColors = ["text-blue-500", "text-green-500", "text-orange-500", "text-rose-500", "text-cyan-500", "text-amber-500"];
 
   // Animation variants for letters
   const letterContainer = {
@@ -152,6 +185,60 @@ export default function DashboardClient({ initialUsers, potd }: DashboardClientP
             >
               Track your LeetCode progress, compete with peers, and master algorithms.
             </motion.p>
+
+            <div className="flex flex-wrap justify-center gap-2 px-3 pt-2">
+              <Button
+                size="sm"
+                variant={selectedClassCode === "ALL" ? "default" : "outline"}
+                onClick={() => {
+                  setSelectedClassCode("ALL");
+                  setSelectedGroupName("ALL");
+                }}
+              >
+                All Classes
+              </Button>
+              {activeClasses.map((item) => (
+                <Button
+                  key={item.id}
+                  size="sm"
+                  variant={normalized(selectedClassCode) === normalized(item.code) ? "default" : "outline"}
+                  onClick={() => {
+                    setSelectedClassCode(item.code);
+                    setSelectedGroupName("ALL");
+                  }}
+                >
+                  {item.displayName}
+                </Button>
+              ))}
+            </div>
+
+            {selectedClass && availableGroups.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2 px-3 pt-1">
+                <Button
+                  size="sm"
+                  variant={selectedGroupName === "ALL" ? "secondary" : "outline"}
+                  onClick={() => setSelectedGroupName("ALL")}
+                >
+                  All Groups
+                </Button>
+                {availableGroups.map((group) => (
+                  <Button
+                    key={group.id}
+                    size="sm"
+                    variant={normalized(selectedGroupName) === normalized(group.name) ? "secondary" : "outline"}
+                    onClick={() => setSelectedGroupName(group.name)}
+                  >
+                    {group.name}
+                  </Button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-center pt-2">
+              <Badge variant="outline" className="text-xs md:text-sm">
+                Showing {scopedUsers.length} students
+              </Badge>
+            </div>
           </motion.div>
 
           {potd && <div className="relative z-10 w-full max-w-3xl px-2 md:px-4"><POTDBanner potd={potd} /></div>}
@@ -162,7 +249,7 @@ export default function DashboardClient({ initialUsers, potd }: DashboardClientP
           <div className="col-span-2 sm:col-span-1">
             <StatsCard
               title="Total Students"
-              value={users.length}
+              value={scopedUsers.length}
               subtitle="Active coders"
             />
           </div>
@@ -192,24 +279,21 @@ export default function DashboardClient({ initialUsers, potd }: DashboardClientP
         </div>
 
         {/* Group Comparison */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <GroupStats
-            groupName="G1"
-            members={g1Users.length}
-            weeklyProgress={g1Weekly}
-            weeklyTop={g1TopWeekly?.username || "-"}
-            overallTop={g1TopOverall?.username || "-"}
-            color="text-blue-500"
-          />
-          <GroupStats
-            groupName="G2"
-            members={g2Users.length}
-            weeklyProgress={g2Weekly}
-            weeklyTop={g2TopWeekly?.username || "-"}
-            overallTop={g2TopOverall?.username || "-"}
-            color="text-green-500"
-          />
-        </div>
+        {groupStats.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {groupStats.map((item, idx) => (
+              <GroupStats
+                key={item.groupName}
+                groupName={item.groupName}
+                members={item.members}
+                weeklyProgress={item.weeklyProgress}
+                weeklyTop={item.weeklyTop}
+                overallTop={item.overallTop}
+                color={groupColors[idx % groupColors.length]}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Charts Toggle */}
         <div className="flex justify-center">
@@ -240,7 +324,7 @@ export default function DashboardClient({ initialUsers, potd }: DashboardClientP
              </div>
              
              <UserGrid 
-                users={users} 
+               users={scopedUsers} 
                 onRefresh={refreshUser} 
                 refreshingIds={refreshingIds}
              />

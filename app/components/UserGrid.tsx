@@ -19,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import UserDetailModal from "./UserDetailModal";
 import SearchAndFilter from "./SearchAndFilter";
 import { User } from "@/app/types";
+import { resolveUserGroup } from "@/lib/academics/resolve";
 
 interface UserGridProps {
   users: User[];
@@ -30,15 +31,27 @@ const USERS_PER_PAGE = 12;
 
 export default function UserGrid({ users, onRefresh, refreshingIds }: UserGridProps) {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [filterClass, setFilterClass] = useState<"G1" | "G2" | "ALL">("ALL");
+  const [filterClass, setFilterClass] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [rankType, setRankType] = useState<"weekly" | "overall">("weekly");
   const [currentPage, setCurrentPage] = useState(1);
 
+  const classOptions = useMemo(() => {
+    return Array.from(
+      new Set(
+        users
+          .map((user) => resolveUserGroup(user))
+          .filter((value): value is string => Boolean(value && value.trim()))
+      )
+    ).sort((a, b) => a.localeCompare(b));
+  }, [users]);
+
   // Filter users when props or filter state changes
   useEffect(() => {
     const matches = users.filter((user) => {
-      const matchesClass = filterClass === "ALL" || user.class === filterClass;
+      const userGroup = (resolveUserGroup(user) || "").toUpperCase();
+      const selectedGroup = (filterClass || "").toUpperCase();
+      const matchesClass = filterClass === "ALL" || userGroup === selectedGroup;
       const matchesSearch =
         user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.roll_num.toLowerCase().includes(searchTerm.toLowerCase());
@@ -95,6 +108,7 @@ export default function UserGrid({ users, onRefresh, refreshingIds }: UserGridPr
         onSearchChange={setSearchTerm}
         filterClass={filterClass}
         onFilterChange={setFilterClass}
+        classOptions={classOptions}
         totalResults={filteredUsers.length}
       />
 
@@ -341,7 +355,7 @@ function computeRanks(users: User[]) {
   const cloned = users.map((u) => ({ ...u }));
   
   // Weekly Rank -> Overall Solved -> Roll Number (Last 3 digits reversed logic?? No, lower is better usually for rank? Or lexicographical?)
-  // Logic: "25mx201 is 1st rank, 336 is 2nd rank" => Lower string value is better rank.
+  // If weekly and total scores tie, lower roll number gets higher rank.
   cloned.sort((a, b) => {
       // 1. Weekly Solved (Desc)
       if ((b.weekly_solved || 0) !== (a.weekly_solved || 0)) {
@@ -351,7 +365,7 @@ function computeRanks(users: User[]) {
       if ((b.totalsolved || 0) !== (a.totalsolved || 0)) {
           return (b.totalsolved || 0) - (a.totalsolved || 0);
       }
-      // 3. Roll Number (Asc) - Lexicographical comparison for strings ("25mx201" < "25mx336")
+      // 3. Roll Number (Asc) - Lexicographical comparison.
       return a.roll_num.localeCompare(b.roll_num);
   });
   
@@ -360,7 +374,7 @@ function computeRanks(users: User[]) {
     // A tie only occurs if ALL sorting criteria are identical. 
     // Since Roll Number is unique (usually), there shouldn't be shared ranks unless duplicate roll numbers exists or logic differs.
     // If the user wants strictly same rank for same score, we ignore roll number for *ranking* number but use it for *ordering*.
-    // But the request implies ordering: "25mx201 is 1st rank, 336 is 2nd rank."
+    // Tie ordering remains deterministic through roll number.
     // This implies they get DIFFERENT ranks (1 and 2).
     
     // So simpler: just rank by index + 1.

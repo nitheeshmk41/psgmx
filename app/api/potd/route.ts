@@ -1,47 +1,18 @@
 // /app/api/potd/route.ts
 import { NextResponse } from "next/server";
+import { fetchPOTD } from "@/lib/leetcode/service";
 
 export async function GET() {
-  const url = "https://leetcode.com/graphql";
-
-  const query = `
-    query questionOfToday {
-      activeDailyCodingChallengeQuestion {
-        date
-        link
-        question {
-          title
-          titleSlug
-          difficulty
-          acRate
-        }
-      }
-    }
-  `;
-
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query }),
-      cache: "no-store",
-    });
-
-    const json = await res.json();
-
-    if (!json?.data?.activeDailyCodingChallengeQuestion) {
-      return NextResponse.json(
-        { error: "POTD not found", raw: json },
-        { status: 500 }
-      );
+    const potd = await fetchPOTD();
+    if (!potd) {
+      return NextResponse.json({ error: "POTD not found" }, { status: 404 });
     }
-
-    return NextResponse.json(json.data.activeDailyCodingChallengeQuestion);
+    return NextResponse.json(potd);
   } catch (error) {
+    console.error("Failed to fetch POTD", error);
     return NextResponse.json(
-      { error: "Failed to fetch POTD", details: String(error) },
+      { error: "Unable to fetch LeetCode data right now. Please try again later." },
       { status: 500 }
     );
   }

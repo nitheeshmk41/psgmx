@@ -1,100 +1,124 @@
-# PSGMX Leaderboard
+# PSGMX
 
-<div align="center">
+PSGMX is a Next.js + Supabase platform for MCA students to track LeetCode progress, compare leaderboard performance, and manage class/group cohorts.
 
-![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js&logoColor=white)
-![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+This version is designed for handover to future batches with dynamic class/group management.
 
-<br/>
+## What Changed
 
-**The ultimate competitive programming tracker for PSG 2025 MX batch.**
-<br/>
-Real-time stats, dynamic leaderboards, and detailed analytics for LeetCode progress.
+- Dynamic classes/batches (no hard-coded 25MX/26MX/27MX logic)
+- Dynamic groups under each class (no hard-coded G1/G2 logic)
+- Student assignment model supports: Class/Batch -> Group
+- Admin dashboard sections for class/group/student management
+- LeetCode integration moved to a reusable service layer with retries, timeout, and parsing
+- Calendar permission failures from LeetCode are handled safely (graceful fallback)
 
-</div>
+## Tech Stack
 
----
+- Next.js 15 (App Router)
+- TypeScript
+- Supabase (PostgreSQL + Auth)
+- Tailwind + shadcn/ui
 
-### **New Gen-Z UI (Current)**
-> *Featuring glassmorphism, fluid animations, and a focus on UX.*
+## Project Structure
 
-![New UI](public/new_image.png)
+- app/: routes, pages, API endpoints
+- lib/leetcode/: LeetCode integration abstraction
+  - client.ts: low-level GraphQL client (timeouts/retries)
+  - queries.ts: GraphQL query strings
+  - service.ts: app-facing use cases
+  - parser.ts: response normalization
+  - types.ts: LeetCode contracts
+- lib/academics/: dynamic class/group structure helpers
+- supabase/migrations/: SQL migrations
 
-### **Legacy UI (Previous)**
-> *Where it all started.*
+## Environment Variables
 
-![Old UI](public/image.png)
+Create `.env.local` (or deployment env vars):
 
----
+- NEXT_PUBLIC_SUPABASE_URL
+- NEXT_PUBLIC_SUPABASE_ANON_KEY
+- SUPABASE_SERVICE_ROLE_KEY
+- LEETCODE_GRAPHQL_ENDPOINT (optional, default: https://leetcode.com/graphql)
 
-## Key Features
+Notes:
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` to the browser.
+- Admin APIs rely on authenticated user role checks from `profiles.role = 'admin'`.
 
-- **Live Leaderboard**: Updates in real-time with granular ranking logic (Weekly > Overall > Roll No).
-- **Problem of the Day (POTD)**: Integrated daily LeetCode challenge banner to keep the streak alive.
-- **Advanced Analytics**:
-    - **Group Stats**: G1 vs G2 competitive analysis.
-    - **Interactive Charts**: Visual progress tracking using Recharts.
-- **Smart Search & Filter**: Instant lookup by Name, Roll Number, or Class Group.
-- **Instant Refresh**: On-demand data synchronization for individual profiles.
-- **Dark/Light Mode**: Fully responsive theme support with high-contrast visibility.
+## Database Migration
 
----
+Run:
 
-##Tech Stack
+- supabase/migrations/20260825_dynamic_batches_groups.sql
 
-| Component | Technology |
-|-----------|------------|
-| **Framework** | Next.js 15 (App Router) |
-| **Language** | TypeScript |
-| **Styling** | Tailwind CSS + Shadcn/ui |
-| **Animations** | Framer Motion |
-| **Database** | Supabase (PostgreSQL) |
-| **Deployment** | Vercel |
+This migration:
 
----
+- Creates `batches` and `batch_groups`
+- Adds optional mapping columns to `users`:
+  - `batch_id`, `group_id`, `batch_code`, `batch_display_name`, `group_name`
+- Backfills values from existing `users.roll_num` and `users.class`
+- Preserves existing progress data (`totalsolved`, `weekly_solved`, etc.)
 
-## 🤝 Contribution Guide
+## LeetCode Integration
 
-We welcome contributions to make this platform even better!
+PSGMX now calls LeetCode only through server-side service code:
 
-### 1. Prerequisites
-- Node.js 18+
-- npm or pnpm
+- `lib/leetcode/client.ts` handles timeout, retries, and JSON decoding
+- `lib/leetcode/service.ts` exposes:
+  - `fetchPOTD()`
+  - `fetchUserBundle(username)`
+  - `fetchUserCalendar(username)`
 
-### 2. Setup
+Important behavior:
+
+- If calendar access is restricted by LeetCode, app returns an empty calendar instead of breaking user refresh.
+- User-facing errors are safe and generic.
+- Detailed errors are logged server-side.
+
+## Admin Workflow
+
+In Admin Dashboard:
+
+1. Classes / Batches
+- Create class code + display name
+- Set active/inactive
+- Set display order
+
+2. Groups
+- Create groups under a class
+- Rename or deactivate groups
+- Set display order
+
+3. Students
+- Add single students or bulk upload JSON
+- Assign/reassign class and group
+- Search/filter by class/group
+- Refresh LeetCode stats per student or in bulk
+
+## Development
+
+Install and run:
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/psgmx-leetcode.git
-
-# Navigate to directory
-cd psgmx-leetcode
-
-# Install dependencies
 npm install
-
-# Set up environment variables
-# Create a .env.local file with your Supabase credentials
-# NEXT_PUBLIC_SUPABASE_URL=...
-# NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-
-# Run development server
 npm run dev
 ```
 
-### 3. How to Contribute
+Quality checks:
 
-1.  **Fork** the project.
-2.  Create your feature branch: `git checkout -b feature/AmazingFeature`.
-3.  Commit your changes: `git commit -m 'Add some AmazingFeature'`.
-4.  Push to the branch: `git push origin feature/AmazingFeature`.
-5.  Open a **Pull Request**.
+```bash
+npm run lint
+npm run build
+```
 
----
+## Deployment Notes
 
-<div align="center">
-Built with ❤️ by the PSGMX Team
-</div>
+- Configure all required env vars in your hosting platform.
+- Ensure migration SQL has been applied before using class/group admin APIs.
+- Ensure `profiles` table has `role` values for admin authorization.
+
+## Data Safety
+
+This update is incremental and does not rebuild core tables.
+Existing students and solved-history fields remain intact.
+

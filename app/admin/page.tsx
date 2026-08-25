@@ -18,11 +18,6 @@ export default function AdminLogin() {
   const router = useRouter();
 
   const handleLogin = async () => {
-    if (email.trim().toLowerCase() !== "admin@mx.com") {
-      toast.error("Only admin@mx.com can login");
-      return;
-    }
-
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -70,7 +65,7 @@ export default function AdminLogin() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="admin@mx.com"
+                    placeholder="Enter admin email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"

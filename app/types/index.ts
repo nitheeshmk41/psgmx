@@ -2,7 +2,12 @@ export interface User {
   id: number;
   username: string;
   roll_num: string;
-  class: "G1" | "G2";
+  class?: string | null;
+  batch_id?: string | null;
+  group_id?: string | null;
+  batch_code?: string | null;
+  batch_display_name?: string | null;
+  group_name?: string | null;
   totalsolved: number;
   weekly_solved: number;
   // LeetCode specific fields
@@ -20,6 +25,22 @@ export interface User {
   // Computed for UI
   weeklyRank?: number;
   overallRank?: number;
+}
+
+export interface AcademicGroup {
+  id: string;
+  name: string;
+  isActive: boolean;
+  displayOrder: number;
+}
+
+export interface AcademicClass {
+  id: string;
+  code: string;
+  displayName: string;
+  isActive: boolean;
+  displayOrder: number;
+  groups: AcademicGroup[];
 }
 
 export interface POTD {

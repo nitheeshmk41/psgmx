@@ -7,8 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 interface SearchAndFilterProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
-  filterClass: "G1" | "G2" | "ALL";
-  onFilterChange: (value: "G1" | "G2" | "ALL") => void;
+  filterClass: string;
+  onFilterChange: (value: string) => void;
+  classOptions: string[];
   totalResults: number;
 }
 
@@ -17,6 +18,7 @@ export default function SearchAndFilter({
   onSearchChange,
   filterClass,
   onFilterChange,
+  classOptions,
   totalResults,
 }: SearchAndFilterProps) {
   const clearSearch = () => {
@@ -58,22 +60,17 @@ export default function SearchAndFilter({
             >
               All
             </Button>
-            <Button
-              variant={filterClass === "G1" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => onFilterChange("G1")}
-              className="rounded-md px-3 py-1.5 text-sm font-medium transition-all"
-            >
-              G1
-            </Button>
-            <Button
-              variant={filterClass === "G2" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => onFilterChange("G2")}
-              className="rounded-md px-3 py-1.5 text-sm font-medium transition-all"
-            >
-              G2
-            </Button>
+            {classOptions.map((option) => (
+              <Button
+                key={option}
+                variant={filterClass === option ? "default" : "ghost"}
+                size="sm"
+                onClick={() => onFilterChange(option)}
+                className="rounded-md px-3 py-1.5 text-sm font-medium transition-all"
+              >
+                {option}
+              </Button>
+            ))}
           </div>
 
           {/* Results Count */}
